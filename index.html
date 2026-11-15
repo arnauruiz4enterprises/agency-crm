@@ -120,6 +120,7 @@ header .sp{flex:1}
 .tp-row{display:grid;grid-template-columns:70px 1fr;gap:10px;align-items:center;padding:8px;border-bottom:1px solid var(--line)}
 .agrid{display:grid;min-width:max-content}.agrid>div{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;min-width:0}
 .agrid .ah{position:sticky;top:var(--tbh,0px);z-index:3;background:var(--chrome);font-weight:700;padding:10px}.agrid .ah.now{color:var(--accent)}
+.agrid .agrp{position:sticky;left:0;background:var(--hover);font-weight:700;padding:8px 10px;display:flex;gap:6px;align-items:center}
 .agrid .aacc{position:sticky;left:0;z-index:2;background:var(--chrome);padding:10px}
 .adayh{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);margin-bottom:4px}.adayh button{border:none;background:none;padding:0 4px;font-size:16px;color:var(--text2);cursor:pointer}
 .acard{display:flex;gap:8px;align-items:center;padding:5px;margin-bottom:5px;border-left:4px solid transparent;cursor:pointer;min-height:52px;width:100%;text-align:left;border-top:none;border-right:none;border-bottom:none;font:inherit;color:inherit}
@@ -928,6 +929,20 @@ function pipelineView(tab,root){const isTrial=tab.trial===true;const dk=isTrial?
       h('div',{class:'cell'},h('span',{class:'lbl'},'Account Link'),h('span',null,a.link?h('a',{href:a.link,target:'_blank',rel:'noopener'},a.link.replace(/^https?:\/\/(www\.)?/,'')):'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Status'),h('span',null,chip(a.status,'account_status')||'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Health'),h('span',null,chip(a.health,'health')||'—'))))});
   root.append(lv,h('div',{class:'foot'},h('b',null,acc.length+' accounts'),' · doble clic en “'+dl+'” para editarlo · rojo = sin contenido aprobado · naranja = 3 días o menos · verde = más de 3 días'+(isTrial?' · solo cuentas de Instagram':'')))}
 
+/* ---------- daily posting tasks (today only, deterministic ids) ---------- */
+function delQuiet(c,id){S.d[c].delete(id);if(S.mode==='sb')S.sb.from('docs').delete().eq('col',c).eq('id',String(id)).then(()=>{});else if(S.mode==='local')saveLocal(c)}
+let genSig=null;
+function genDaily(){if(S.role!=='admin'&&S.mode==='sb')return;if(!S.loaded||!S.d.actions)return;const d=today();
+  const sig=d+'|'+rows('accounts').map(a=>a.id+':'+(a.daily_posts||0)+':'+(a.daily_trial||0)+':'+a.status+':'+a.platform).join(',');if(sig===genSig)return;genSig=sig;let changed=0;
+  rows('accounts').forEach(a=>{const active=!BAD_ACC.includes(a.status);
+    [['NR',+a.daily_posts||0],['TR',a.platform==='Instagram'?(+a.daily_trial||0):0]].forEach(([kd,n])=>{if(!active)n=0;
+      const mineT=rows('actions').filter(t=>t.due===d&&POST_TYPES.includes(t.action_type)&&kindOf(t)===kd&&taskAcc(t,a));
+      for(let i=mineT.length;i<n;i++){const id='auto-'+a.id+'-'+d+'-'+kd+'-'+i;if(S.d.actions.has(id))continue;const K=KIND[kd];
+        put('actions',id,{name:K[0]+' · sin variación · '+a.name,model:a.model,account:[accLabel(a)],account_id:a.id,platform:a.platform,action_type:K[1],trial_reels:K[2],due:d,status:'To Do',auto:true},true);changed++}
+      const extra=mineT.filter(t=>t.auto&&!t.variation_ref&&(t.status||'To Do')==='To Do');let over=mineT.length-n;
+      for(const t of extra.reverse()){if(over<=0)break;delQuiet('actions',t.id);over--;changed++}})});
+  if(changed)rerender()}
+
 /* ---------- content assignment (week × account) ---------- */
 function driveId(u){const m=String(u||'').match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})|\/folders\/([\w-]{10,})/);return m?(m[1]||m[2]||null):null}
 const varFile=v=>v&&(v.file||v.edited_drive)||null;
@@ -968,20 +983,25 @@ function editTaskDlg(t){const a=t.account_id?S.d.accounts.get(t.account_id):accF
     h('div',{class:'f'},h('label',null,'Content type 🔒'),h('div',null,h('span',{class:'chip g'},KIND[kind][0]))),h('div',{class:'f'},h('label',null,'Account 🔒'),h('div',null,accChip(accLabel(a)))),h('div',{class:'f'},h('label',null,'Variation'),varBox),
     h('div',{class:'f'},h('label',{for:'et_due'},'Due date *'),due),h('div',{class:'f'},h('label',{for:'et_st'},'Status'),stSel),h('div',{class:'f'},h('label',{for:'et_link'},'Post link'),link),
     h('div',{class:'acts'},h('button',{type:'button',class:'btn-danger',onclick:()=>confirmDlg('¿Borrar esta tarea de posting?','Delete task',()=>del('actions',t.id))},'Delete task'),h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',onclick:closeModal},'Cancel'),h('button',{type:'button',class:'btn-acc',onclick:()=>{if(!due.value){due.focus();return}saveTask({...t,status:stSel.value,post_link:link.value.trim()||null},a,kind,state.v,due.value);closeModal();toast('Tarea guardada')}},'Save')))))}
-function assignView(root){const av=st.assign||(st.assign={statuses:['Running & Posting','Warming Up']});const m=model();if(!m){root.append(h('div',{class:'empty'},'No creators yet.'));return}
+const ASORT=[{k:'name',l:'Account'},{k:'platform',l:'Platform'},{k:'status',l:'Account Status'},{k:'country',l:'Country'},{k:'branding',l:'Branding'},{k:'daily_posts',l:'Daily Posts'},{k:'daily_trial',l:'Daily Trial Reels'},{k:'reach_30d',l:'Reach'}];
+const AGROUP=[['platform','Platform'],['status','Account Status'],['country','Country'],['branding','Branding']];
+function assignView(root){const av=st.assign||(st.assign={statuses:['Running & Posting','Warming Up'],group:'',sort:[{k:'platform',dir:1},{k:'name',dir:1}]});if(!av.sort)av.sort=[{k:'platform',dir:1},{k:'name',dir:1}];if(av.group==null)av.group='';const m=model();if(!m){root.append(h('div',{class:'empty'},'No creators yet.'));return}
   const days=[...Array(7)].map((_,i)=>addDays(st.week,i));const keys=days.map(iso);const td=today();const all=postTasks();
-  const accs=mine('accounts').filter(a=>!av.statuses.length||av.statuses.includes(a.status)).sort((a,b)=>String(a.platform||'').localeCompare(String(b.platform||''))||String(a.name).localeCompare(String(b.name)));
+  const accs=mine('accounts').filter(a=>!av.statuses.length||av.statuses.includes(a.status)).sort((a,b)=>{for(const s of av.sort){const x=a[s.k],y=b[s.k];let r;if(x==null&&y==null)continue;if(x==null||x==='')r=1;else if(y==null||y==='')r=-1;else if(s.k==='status'){const o=Object.keys(O.account_status);r=o.indexOf(x)-o.indexOf(y)}else if(!isNaN(+x)&&!isNaN(+y)&&x!==''&&y!=='')r=(+x)-(+y);else r=String(x).localeCompare(String(y),undefined,{numeric:true});if(r)return s.dir*r}return 0});
   const weekTasks=all.filter(t=>keys.includes(t.due)&&accs.some(a=>taskAcc(t,a)));
   const tb=h('div',{class:'toolbar stick'},weekNav(),h('span',{class:'muted'},m.name+' · '+weekTasks.length+' posting tasks this week'),h('span',{style:'flex-basis:100%;height:0'}),
-    h('button',{type:'button',class:'fbtn',onclick:e=>pop(e.currentTarget,[...Object.keys(O.account_status).map(s=>h('label',null,h('input',{type:'checkbox',checked:av.statuses.includes(s),onchange:ev=>{av.statuses=ev.target.checked?[...av.statuses,s]:av.statuses.filter(x=>x!==s);soft()}}),chip(s,'account_status'))),h('div',{class:'row'},h('button',{type:'button',onclick:()=>{av.statuses=[];soft()}},'Todas'))])},h('b',null,'Account Status'),h('span',{class:'op'},'is any of'),av.statuses.slice(0,2).map(s=>chip(s,'account_status')),av.statuses.length>2?h('span',{class:'muted'},'+'+(av.statuses.length-2)):null,' ▾'));
+    h('button',{type:'button',class:'fbtn',onclick:e=>pop(e.currentTarget,[...Object.keys(O.account_status).map(s=>h('label',null,h('input',{type:'checkbox',checked:av.statuses.includes(s),onchange:ev=>{av.statuses=ev.target.checked?[...av.statuses,s]:av.statuses.filter(x=>x!==s);soft()}}),chip(s,'account_status'))),h('div',{class:'row'},h('button',{type:'button',onclick:()=>{av.statuses=[];soft()}},'Todas'))])},h('b',null,'Account Status'),h('span',{class:'op'},'is any of'),av.statuses.slice(0,2).map(s=>chip(s,'account_status')),av.statuses.length>2?h('span',{class:'muted'},'+'+(av.statuses.length-2)):null,' ▾'),
+    h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt'+(av.group?'':' muted'),onclick:()=>{av.group='';closePop();rerender()}},(av.group?'○ ':'● ')+'Sin agrupar'),...AGROUP.map(([k,l])=>h('div',{class:'opt',onclick:()=>{av.group=k;closePop();rerender()}},(av.group===k?'● ':'○ ')+l))])},'Group',av.group?h('span',{class:'badge'},'1'):null),
+    h('button',{type:'button',class:'plain',onclick:e=>sortPop(e.currentTarget,ASORT,av)},'Sort',av.sort.length?h('span',{class:'badge'},av.sort.length):null));
   root.append(tb);
   if(!accs.length){root.append(h('div',{class:'empty'},'Ninguna cuenta de '+m.name+' tiene ese estado. Cambia el filtro de Account Status.'));return}
   const g=h('div',{class:'agrid',style:'grid-template-columns:260px repeat(7,minmax(190px,1fr))'});
   g.append(h('div',{class:'ah',style:'left:0;z-index:4'},'ACCOUNT'),...days.map((d,i)=>h('div',{class:'ah'+(keys[i]===td?' now':'')},d.toLocaleDateString('en-US',{weekday:'short',day:'numeric'}))));
-  accs.forEach(a=>{g.append(h('div',{class:'aacc'},h('b',{style:'overflow-wrap:anywhere'},accLabel(a)),h('div',{class:'muted',style:'margin:4px 0'},a.status||''),h('div',{style:'display:flex;gap:6px;align-items:center'},platIcon(a.platform),h('span',{class:'muted'},a.platform||''))));
+  let lastG=null;accs.forEach(a=>{if(av.group){const gv=a[av.group]||'(vacío)';if(gv!==lastG){lastG=gv;const n=accs.filter(x=>(x[av.group]||'(vacío)')===gv).length;g.append(h('div',{class:'agrp',style:'grid-column:1/-1'},h('span',{class:'muted'},(AGROUP.find(x=>x[0]===av.group)||[,''])[1]+' '),av.group==='platform'?h('span',{class:'chip g accchip'},platIcon(gv),gv):av.group==='status'?chip(gv,'account_status'):chip(gv,'~'),h('span',{class:'muted'},' · '+n+' cuenta'+(n===1?'':'s'))))}}
+    g.append(h('div',{class:'aacc'},h('b',{style:'overflow-wrap:anywhere'},accLabel(a)),h('div',{class:'muted',style:'margin:4px 0'},a.status||''),h('div',{style:'display:flex;gap:6px;align-items:center'},platIcon(a.platform),h('span',{class:'muted'},a.platform||''))));
     keys.forEach(k=>{const tasks=all.filter(t=>t.due===k&&taskAcc(t,a)).sort((x,y)=>'NRTRSR'.indexOf(kindOf(x))-'NRTRSR'.indexOf(kindOf(y)));
-      const need={NR:Math.max(0,(+a.daily_posts||0)-tasks.filter(t=>kindOf(t)==='NR').length),TR:a.platform==='Instagram'?Math.max(0,(+a.daily_trial||0)-tasks.filter(t=>kindOf(t)==='TR').length):0};
-      const done=tasks.filter(t=>t.status==='Posted').length;const tot=tasks.length+need.NR+need.TR;const cell=h('div',null,h('div',{class:'adayh'},h('span',null,done+'/'+tot),h('button',{type:'button','aria-label':'Añadir tarea el '+k+' en '+a.name,title:'Añadir tarea',onclick:()=>newTaskDlg(a,'NR',k)},'＋')));
+      const future=k>=td&&!BAD_ACC.includes(a.status);const need={NR:future?Math.max(0,(+a.daily_posts||0)-tasks.filter(t=>kindOf(t)==='NR').length):0,TR:future&&a.platform==='Instagram'?Math.max(0,(+a.daily_trial||0)-tasks.filter(t=>kindOf(t)==='TR').length):0};
+      const done=tasks.filter(t=>t.status==='Posted').length;const tot=tasks.length+need.NR+need.TR;if(!tot&&k<td){g.append(h('div',null));return}const cell=h('div',null,h('div',{class:'adayh'},h('span',null,done+'/'+tot),h('button',{type:'button','aria-label':'Añadir tarea el '+k+' en '+a.name,title:'Añadir tarea',onclick:()=>newTaskDlg(a,'NR',k)},'＋')));
       tasks.forEach(t=>{const kd=kindOf(t);const v=t.variation_ref?S.d.variations.get(t.variation_ref):null;const posted=t.status==='Posted';const miss=t.status==='Not Posted'||(!posted&&k<td);const cls=posted?'done':miss?'miss':v?'set':'open';
         const line2=posted?(v?v.name:(t.variation_id||'Posted')):miss?'🛑 '+(t.reasoning||(v?'No posteado':'No content available')):v?v.name:'Choose a variation…';
         const card=h('div',{class:'acard '+cls,role:'button',tabindex:'0',title:KIND[kd][0]+' · '+(v?v.name:'sin variación')+' · '+(t.status||'To Do')+(t.reasoning?' · '+t.reasoning:''),onclick:()=>editTaskDlg(t),onkeydown:e=>{if(e.key==='Enter'&&e.target===card)editTaskDlg(t)}},
@@ -990,7 +1010,7 @@ function assignView(root){const av=st.assign||(st.assign={statuses:['Running & P
       ['NR','TR'].forEach(kd=>{for(let i=0;i<need[kd];i++){const past=k<td;const card=h('div',{class:'acard '+(past?'miss':'open'),role:'button',tabindex:'0',title:KIND[kd][0]+' sin asignar',onclick:()=>newTaskDlg(a,kd,k),onkeydown:e=>{if(e.key==='Enter')newTaskDlg(a,kd,k)}},h('span',{class:'th'},'＋'),h('div',{class:'tx'},h('div',null,h('span',{class:'k'},kd),h('b',null,'No content')),h('div',{class:'muted',style:'font-size:12px'},past?'🛑 No content assigned':'Choose a variation…')));cell.append(card)}});
       g.append(cell)})});
   root.append(g);requestAnimationFrame(()=>{const v=$('#view');if(v&&tb.isConnected)v.style.setProperty('--tbh',tb.offsetHeight+'px')});
-  root.append(h('div',{class:'foot'},h('b',null,accs.length+' cuentas'),' · verde = posteado · rojo = no se posteó (con el motivo) · azul = variación asignada · amarillo = hueco por rellenar según Daily Posts / Daily Trial Reels'))}
+  root.append(h('div',{class:'foot'},h('b',null,accs.length+' cuentas'),' · verde = posteado · rojo = no se posteó (con el motivo) · azul = variación asignada · amarillo = hueco por rellenar según Daily Posts / Daily Trial Reels · los días pasados sin tareas quedan en blanco · las tareas del día se crean solas en Posting cada mañana'))}
 
 /* ---------- variations: double down & trial reel strategy ---------- */
 function srcOf(v){return (v.content_ref&&S.d.content.get(v.content_ref))||rows('content').find(c=>c.model===v.model&&c.content_id&&c.content_id===v.content_id)||null}
@@ -1197,6 +1217,7 @@ function render(){
   applyLayout();
   if(S.role==='model'&&S.profile){st.route='modelapp';st.model=S.profile.model_id}
   if(S.loaded&&!S.synced&&S.role!=='model'&&S.d.variations){S.synced=true;setTimeout(syncAllVars,0)}
+  if(S.loaded&&S.role!=='model')setTimeout(genDaily,0);
   if(!st.keepPop)closePop();const s=settings(),m=model();if(m&&st.model!==m.id){st.model=m.id}
   $('#brandName').textContent=s.agency||'Agency';$('#logo').textContent=(s.agency||'A').slice(0,1).toUpperCase();$('#meName').textContent=(S.profile&&(S.profile.display_name||S.profile.email))||s.me||'Owner';$('#outBtn').style.display=S.sb?'':'none';if(S.profile)$('#meRole').textContent=S.role==='admin'?'Admin':'Modelo';$('#meAv').textContent=(s.me||'ME').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
   $('#modelName').textContent=m?m.name:'No creators';
