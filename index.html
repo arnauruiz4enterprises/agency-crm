@@ -88,6 +88,12 @@ header .sp{flex:1}
 .lhead{position:sticky;top:0;background:var(--band);z-index:2;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);font-weight:600}
 .lhead>div,.lrow>div{padding:8px 10px;border-right:1px solid var(--line);min-width:0;overflow:hidden}
 .lrow>div{max-height:66px;overflow:hidden;overflow-wrap:anywhere}
+.lv.rh-short .lrow>div{max-height:38px;white-space:nowrap;text-overflow:ellipsis}
+.lv.rh-short .lrow>div>span:last-child{display:flex;gap:4px;flex-wrap:nowrap;overflow:hidden}
+.lv.rh-short .lrow .t span{white-space:nowrap}
+.lv.rh-short .lrow>div>span:last-child>*{flex:none}
+.lv.rh-tall .lrow>div{max-height:none}
+.lv.rh-tall .lrow>div>span:last-child{display:flex;gap:4px;flex-wrap:wrap}
 .lrow:hover{background:var(--hover)}
 .lrow .t{font-weight:600;display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
 .lrow .t span{overflow:hidden;text-overflow:ellipsis}
@@ -530,11 +536,15 @@ function effCfg(cfg,key){const L=layout();const lab=(L.labels||{})[cfg.col]||{};
   ((L.fields||{})[cfg.col]||[]).forEach(f=>{if(!have.has(f.k)){cols.push(C(f.k,f.l,f.t,{o:f.o,free:f.o?1:undefined,w:f.w||160,custom:1}));have.add(f.k)}});
   cols=cols.map(c=>lab[c.k]?{...c,l:lab[c.k]}:{...c});
   if(V.cols){const by=Object.fromEntries(cols.map(c=>[c.k,c]));const ord=[];V.cols.forEach(x=>{const c=by[x.k];if(c){ord.push({...c,w:x.w||c.w,_hide:!!x.hide});delete by[x.k]}});Object.values(by).forEach(c=>ord.push(c));cols=ord}
-  return {...cfg,allCols:cols,cols:cols.filter(c=>!c._hide),filters:V.filters||cfg.filters,def:V.f||cfg.def,group:V.group||cfg.group,sort:'sort' in V?V.sort:cfg.sort,_key:key,_base:cfg,pw:V.pw||cfg.pw}}
+  return {...cfg,allCols:cols,cols:cols.filter(c=>!c._hide),filters:V.filters||cfg.filters,def:V.f||cfg.def,group:V.group||cfg.group,sort:'sort' in V?V.sort:cfg.sort,_key:key,_base:cfg,pw:V.pw||cfg.pw,rowH:V.rowH||cfg.rowH}}
 const normF=f=>{const o={};Object.keys(f||{}).sort().forEach(k=>{const v=f[k];if(Array.isArray(v)?v.length:(v&&typeof v==='object'&&((v.c&&String(v.c).trim())||typeof v.b==='boolean')))o[k]=JSON.parse(JSON.stringify(v))});return o};
 const viewSig=(f,g,s)=>JSON.stringify([normF(f),g||[],normSort(s)]);
-function saveView(cfg,vs){const L=layout();const views={...(L.views||{})};const V={...(views[cfg._key]||{}),f:normF(vs.f),group:[...vs.group],sort:normSort(vs.sort),filters:[...(vs.filters||[])]};const W=vs.widths||{};if(Object.keys(W).length){V.cols=(V.cols||cfg.allCols.map(c=>({k:c.k,w:c.w,hide:!!c._hide}))).map(x=>W[x.k]?{...x,w:W[x.k]}:x);if(W._p)V.pw=W._p}views[cfg._key]=V;vs.widths={};saveLayout({views});toast('Vista guardada para todo el equipo')}
+function saveView(cfg,vs){const L=layout();const views={...(L.views||{})};const V={...(views[cfg._key]||{}),f:normF(vs.f),group:[...vs.group],sort:normSort(vs.sort),filters:[...(vs.filters||[])],rowH:vs.rowH||'medium'};const W=vs.widths||{};if(Object.keys(W).length){V.cols=(V.cols||cfg.allCols.map(c=>({k:c.k,w:c.w,hide:!!c._hide}))).map(x=>W[x.k]?{...x,w:W[x.k]}:x);if(W._p)V.pw=W._p}views[cfg._key]=V;vs.widths={};saveLayout({views});toast('Vista guardada para todo el equipo')}
 function resetView(cfg){const L=layout();const views={...(L.views||{})};delete views[cfg._key];confirmDlg('¿Volver esta vista a su configuración original? Se pierden filtros, columnas y orden guardados.','Restablecer',()=>{saveLayout({views});delete st.views[cfg._key];toast('Vista restablecida')})}
+function copyFormat(cfg,vs){const keys=[];Object.entries(PAGES).forEach(([pk,p])=>(p.tabs||[{id:'',cfg:p.cfg,view:p.view}]).forEach(t=>{if(t.view==='list'&&t.cfg&&t.cfg.col===cfg.col&&pk===String(cfg._key).split('/')[0]){const k=pk+'/'+(p.tabs?t.id:'');if(k!==cfg._key)keys.push(k)}}));
+  confirmDlg('¿Aplicar el ancho, orden y visibilidad de columnas, la altura de fila y los filtros de esta vista a las otras '+keys.length+' pestañas de esta página? Los filtros seleccionados y la agrupación de cada vista no cambian.','Aplicar',()=>{const L=layout();const views={...(L.views||{})};const W=vs.widths||{};
+    const cols=cfg.allCols.map(c=>({k:c.k,w:W[c.k]||c.w,hide:!!c._hide}));const pw=W._p||cfg.pw;
+    [cfg._key,...keys].forEach(k=>{views[k]={...(views[k]||{}),cols,pw,rowH:vs.rowH||'medium',filters:[...(vs.filters||[])]}});vs.widths={};saveLayout({views});toast('Formato aplicado a '+(keys.length+1)+' vistas')})}
 const FTYPES=[['text','Texto'],['long','Texto largo'],['number','Número'],['date','Fecha'],['url','Link'],['select','Selección'],['multi','Selección múltiple'],['check','Casilla']];
 function fieldsModal(cfg){const L=layout();const base=cfg._base;const origL=k=>((base.cols.find(b=>b.k===k)||{}).l);
   let list=cfg.allCols.map(c=>({k:c.k,l:c.l,orig:origL(c.k)||c.l,t:c.t,o:c.o,w:c.w||140,hide:!!c._hide,custom:!!c.custom}));
@@ -589,8 +599,10 @@ function optionsModal(col,cfg){const cur=O[col.o]||{};let list=Object.entries(cu
 
 /* ---------- list view ---------- */
 const normSort=s=>!s?[]:(Array.isArray(s)?s:[s]).filter(x=>x&&x.k).map(x=>({k:x.k,dir:x.dir||1}));
-const vsSig=vs=>viewSig(vs.f,vs.group,vs.sort)+JSON.stringify(vs.filters||[]);
-function vstate(key,cfg){const src=viewSig(cfg.def,cfg.group,cfg.sort)+JSON.stringify(cfg.filters||[]);const cur=st.views[key];if(!cur||cur._src!==src)st.views[key]={_src:src,f:JSON.parse(JSON.stringify(cfg.def||{})),group:[...(cfg.group||[])],sort:normSort(cfg.sort),filters:[...(cfg.filters||[])],widths:cur?cur.widths:{},closed:cur?cur.closed:new Set(),limit:200};return st.views[key]}
+const vsSig=vs=>viewSig(vs.f,vs.group,vs.sort)+JSON.stringify(vs.filters||[])+(vs.rowH||'medium');
+function vstate(key,cfg){const src=viewSig(cfg.def,cfg.group,cfg.sort)+JSON.stringify(cfg.filters||[])+(cfg.rowH||'medium');const cur=st.views[key];if(!cur||cur._src!==src)st.views[key]={_src:src,f:JSON.parse(JSON.stringify(cfg.def||{})),group:[...(cfg.group||[])],sort:normSort(cfg.sort),filters:[...(cfg.filters||[])],rowH:cfg.rowH||'medium',widths:cur?cur.widths:{},closed:cur?cur.closed:new Set(),limit:200};return st.views[key]}
+const FORDER=['status','proposed','mstatus','pstatus','platform','action_type','type','vertical','country','accounts','account','branding','editor','edited_by','editing_priority','assignee','priority','tier','urgency','ptype','category','doc_type','seen','removed','verification','health','verified','tags','model_tags','content_plan','account_type','tests'];
+const fOrder=list=>{const L=layout();const pref=L.filterOrder||FORDER;const ix=k=>{const i=pref.indexOf(k);return i<0?999:i};return list.map((k,i)=>[k,i]).sort((a,b)=>ix(a[0])-ix(b[0])||a[1]-b[1]).map(x=>x[0])};
 const FILTERABLE=c=>['select','multi','text','long','url','check'].includes(c.t)&&!c.calc;
 function filterBtn(k,col,vs,cfg){const want=vs.f[k];const isSel=col.t==='select'||col.t==='multi';
   const remove=h('button',{type:'button',class:'plain',onclick:()=>{vs.filters=vs.filters.filter(x=>x!==k);delete vs.f[k];closePop();rerender()}},'Quitar filtro');
@@ -624,15 +636,16 @@ function listView(cfg,key,root){
     else if(typeof want.b==='boolean')data=data.filter(r=>!!r[k]===want.b)}
   const sticky=!String(key).startsWith('plan-');
   const tb=h('div',{class:'toolbar'+(sticky?' stick':'')});
-  (vs.filters||[]).forEach(k=>{const col=byK[k];if(col&&FILTERABLE(col))tb.append(filterBtn(k,col,vs,cfg))});
+  fOrder(vs.filters||[]).forEach(k=>{const col=byK[k];if(col&&FILTERABLE(col))tb.append(filterBtn(k,col,vs,cfg))});
   const addable=[pc,...cfg.allCols].filter(c=>FILTERABLE(c)&&!(vs.filters||[]).includes(c.k));
   if(addable.length)tb.append(h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'muted',style:'padding:4px 6px;font-size:11px'},'FILTRAR POR'),...addable.map(c=>h('div',{class:'opt',onclick:()=>{vs.filters=[...(vs.filters||[]),c.k];closePop();rerender()}},c.l))])},'＋ Filtro'));
   const gOpts=cfg.cols.filter(c=>c.t==='select'||c.t==='multi');
   tb.append(h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt muted',onclick:()=>{vs.group=[];closePop();rerender()}},'No grouping'),...gOpts.map(c=>h('label',null,h('input',{type:'checkbox',checked:vs.group.includes(c.k),onchange:ev=>{vs.group=ev.target.checked?[...vs.group,c.k].slice(0,3):vs.group.filter(x=>x!==c.k);soft()}}),c.l))])},'Group',vs.group.length?h('span',{class:'badge'},vs.group.length):null),
     h('button',{type:'button',class:'plain',onclick:e=>sortPop(e.currentTarget,[pc,...cfg.cols.filter(c=>!c.calc)],vs)},'Sort',vs.sort.length?h('span',{class:'badge'},vs.sort.length):null),
+    h('button',{type:'button',class:'plain',title:'Altura de las filas',onclick:e=>pop(e.currentTarget,[h('div',{class:'muted',style:'padding:4px 6px;font-size:11px'},'ALTURA DE FILA'),...[['short','Corta · una línea'],['medium','Media'],['tall','Alta · todo el contenido']].map(([v,l])=>h('div',{class:'opt',onclick:()=>{vs.rowH=v;closePop();rerender()}},vs.rowH===v?'● ':'○ ',l))])},'↕ Filas'),
     h('span',{style:'flex:1'}),
     canEdit()&&(vsSig(vs)!==vs._src||Object.keys(vs.widths||{}).length)?h('button',{type:'button',class:'btn-acc',title:'Guarda filtros, agrupación, orden y anchos como vista fija para todos',onclick:()=>saveView(cfg,vs)},'💾 Guardar vista'):'',
-    canEdit()?h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt',onclick:()=>{closePop();fieldsModal(cfg)}},'Campos y columnas…'),...cfg.allCols.filter(c=>(c.t==='select'||c.t==='multi')&&c.o).map(c=>h('div',{class:'opt',onclick:()=>{closePop();optionsModal({...c,_c:cfg.col},cfg)}},'Opciones de “'+c.l+'”…')),h('div',{class:'opt muted',onclick:()=>{closePop();resetView(cfg)}},'Restablecer vista original')])},'⚙ Editar'):'',
+    canEdit()?h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt',onclick:()=>{closePop();fieldsModal(cfg)}},'Campos y columnas…'),...cfg.allCols.filter(c=>(c.t==='select'||c.t==='multi')&&c.o).map(c=>h('div',{class:'opt',onclick:()=>{closePop();optionsModal({...c,_c:cfg.col},cfg)}},'Opciones de “'+c.l+'”…')),h('div',{class:'opt',onclick:()=>{closePop();copyFormat(cfg,vs)}},'Copiar este formato a todas las pestañas de esta página…'),h('div',{class:'opt muted',onclick:()=>{closePop();resetView(cfg)}},'Restablecer vista original')])},'⚙ Editar'):'',
     h('button',{type:'button',class:'btn-acc',onclick:()=>newRecord(cfg)},'＋ New record'));
   root.append(tb);
   const ord=k=>{const col=byK[k];const o=col&&col.o&&O[col.o]?Object.keys(O[col.o]):null;return o?(v=>{const i=o.indexOf(v);return i<0?999:i}):null};
@@ -643,7 +656,7 @@ function listView(cfg,key,root){
   if(!S.loaded){root.append(h('div',{class:'empty'},'Loading records…'));return}
   if(!cfg.global&&!model()){root.append(h('div',{class:'empty'},'No creators yet. Add your first creator in Model Allocation to start.'));return}
   const W=(k,d)=>(vs.widths&&vs.widths[k])||d;const colsCss=()=>W('_p',cfg.pw||260)+'px '+cfg.cols.map(c=>W(c.k,c.w||140)+'px').join(' ');
-  const lv=h('div',{class:'lv',style:'--cols:'+colsCss()});
+  const lv=h('div',{class:'lv rh-'+(vs.rowH||'medium'),style:'--cols:'+colsCss()});
   const rsz=(k,def)=>h('span',{class:'rsz',title:'Arrastra para cambiar el ancho',onmousedown:e=>{e.preventDefault();e.stopPropagation();const h0=e.currentTarget;h0.classList.add('on');document.body.classList.add('resizing');const x0=e.clientX,w0=W(k,def);
     const mv=ev=>{vs.widths={...(vs.widths||{}),[k]:Math.max(60,Math.round(w0+ev.clientX-x0))};lv.style.setProperty('--cols',colsCss())};
     const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);document.body.classList.remove('resizing');h0.classList.remove('on');soft()};
