@@ -106,6 +106,12 @@ header .sp{flex:1}
 .lbl{display:none}
 
 /* popover + modal */
+.fe-list{max-height:52vh;overflow:auto;border:1px solid var(--line);margin-bottom:10px}
+.fe-row{display:grid;grid-template-columns:64px 54px 1fr 80px 50px 120px;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+.fe-row.op-row{grid-template-columns:64px 44px 1fr auto 36px}
+.fe-row input[type=checkbox]{width:auto;justify-self:center}.fe-row input[type=color]{width:36px;height:26px;padding:0;border:none;background:none}
+.fe-head{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;background:var(--chrome);z-index:1}
+.fe-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}.fe-add input{flex:1;min-width:160px}
 .pop{position:fixed;z-index:50;background:var(--chrome);border:1px solid var(--border);min-width:200px;max-width:320px;max-height:340px;overflow:auto;box-shadow:0 12px 32px #0008;padding:6px}
 .pop label,.pop .opt{display:flex;gap:8px;align-items:center;padding:5px 8px;cursor:pointer}
 .pop label:hover,.pop .opt:hover{background:var(--hover)}
@@ -474,10 +480,79 @@ function editCell(td,col,row,cfg){
   const commit=ok=>{if(done)return;done=true;if(ok){let v=inp.value;if(col.t==='number'||col.t==='pct')v=v===''?null:+v;else if(v==='')v=null;if(v!==(row[col.k]??null))return patch(cfg.col,row.id,{[col.k]:v})}rerender()};
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit(true);if(e.key==='Escape')commit(false)});inp.addEventListener('blur',()=>commit(true));td.replaceChildren(inp);inp.focus();inp.select&&inp.select()}
 
+/* ---------- editable layout (admin): views, fields, options ---------- */
+const O0=JSON.parse(JSON.stringify(O));
+const canEdit=()=>!S.sb||S.role==='admin';
+const layout=()=>S.d.settings.get('layout')||{};
+let layoutStamp=null;
+function applyLayout(){const L=layout();const stamp=JSON.stringify(L.options||{});if(stamp===layoutStamp)return;layoutStamp=stamp;Object.keys(O).forEach(k=>{if(!(k in O0))delete O[k]});Object.assign(O,JSON.parse(JSON.stringify(O0)),L.options||{})}
+function saveLayout(p){const L={...layout(),...p};delete L.id;layoutStamp=null;return put('settings','layout',L)}
+function effCfg(cfg,key){const L=layout();const lab=(L.labels||{})[cfg.col]||{};const V=(L.views||{})[key]||{};
+  let cols=[...cfg.cols];const have=new Set(cols.map(c=>c.k));
+  ((L.fields||{})[cfg.col]||[]).forEach(f=>{if(!have.has(f.k)){cols.push(C(f.k,f.l,f.t,{o:f.o,free:f.o?1:undefined,w:f.w||160,custom:1}));have.add(f.k)}});
+  cols=cols.map(c=>lab[c.k]?{...c,l:lab[c.k]}:{...c});
+  if(V.cols){const by=Object.fromEntries(cols.map(c=>[c.k,c]));const ord=[];V.cols.forEach(x=>{const c=by[x.k];if(c){ord.push({...c,w:x.w||c.w,_hide:!!x.hide});delete by[x.k]}});Object.values(by).forEach(c=>ord.push(c));cols=ord}
+  return {...cfg,allCols:cols,cols:cols.filter(c=>!c._hide),filters:V.filters||cfg.filters,def:V.f||cfg.def,group:V.group||cfg.group,sort:'sort' in V?V.sort:cfg.sort,_key:key,_base:cfg}}
+const normF=f=>{const o={};Object.keys(f||{}).sort().forEach(k=>{if(f[k]&&f[k].length)o[k]=[...f[k]]});return o};
+const viewSig=(f,g,s)=>JSON.stringify([normF(f),g||[],s||null]);
+function saveView(cfg,vs){const L=layout();const views={...(L.views||{})};views[cfg._key]={...(views[cfg._key]||{}),f:normF(vs.f),group:[...vs.group],sort:vs.sort||null};saveLayout({views});toast('Vista guardada para todo el equipo')}
+function resetView(cfg){const L=layout();const views={...(L.views||{})};delete views[cfg._key];confirmDlg('¿Volver esta vista a su configuración original? Se pierden filtros, columnas y orden guardados.','Restablecer',()=>{saveLayout({views});delete st.views[cfg._key];toast('Vista restablecida')})}
+const FTYPES=[['text','Texto'],['long','Texto largo'],['number','Número'],['date','Fecha'],['url','Link'],['select','Selección'],['multi','Selección múltiple'],['check','Casilla']];
+function fieldsModal(cfg){const L=layout();const base=cfg._base;const origL=k=>((base.cols.find(b=>b.k===k)||{}).l);
+  let list=cfg.allCols.map(c=>({k:c.k,l:c.l,orig:origL(c.k)||c.l,t:c.t,o:c.o,w:c.w||140,hide:!!c._hide,custom:!!c.custom}));
+  let filters=[...(cfg.filters||[])];const added=[];const removed=new Set();const body=h('div');
+  const nm=h('input',{id:'nf_name',placeholder:'Nombre del campo'}),tp=h('select',{id:'nf_type','aria-label':'Tipo de campo'},FTYPES.map(([v,l])=>h('option',{value:v},l)));
+  const mv=(i,d)=>{const j=i+d;if(j<0||j>=list.length)return;[list[i],list[j]]=[list[j],list[i]];draw()};
+  function draw(){body.replaceChildren(h('div',{class:'fe-row fe-head'},h('span'),h('span',null,'Visible'),h('span',null,'Nombre'),h('span',null,'Ancho'),h('span',null,'Filtro'),h('span')),...list.map((c,i)=>{const sel=c.t==='select'||c.t==='multi';
+    return h('div',{class:'fe-row'},h('span',{style:'display:flex;gap:2px'},h('button',{type:'button','aria-label':'Subir '+c.l,onclick:()=>mv(i,-1)},'↑'),h('button',{type:'button','aria-label':'Bajar '+c.l,onclick:()=>mv(i,1)},'↓')),
+      h('input',{type:'checkbox','aria-label':'Mostrar '+c.l,checked:!c.hide,onchange:e=>{c.hide=!e.target.checked}}),
+      h('input',{value:c.l,'aria-label':'Nombre de '+c.l,oninput:e=>{c.l=e.target.value}}),
+      h('input',{type:'number',min:'60',max:'900',step:'10',value:c.w,'aria-label':'Ancho de '+c.l,oninput:e=>{c.w=+e.target.value||140}}),
+      sel?h('input',{type:'checkbox','aria-label':'Filtro por '+c.l,checked:filters.includes(c.k),onchange:e=>{filters=e.target.checked?[...filters,c.k]:filters.filter(x=>x!==c.k)}}):h('span',{class:'muted'},'—'),
+      h('span',{style:'display:flex;gap:4px;justify-content:flex-end'},sel&&c.o?h('button',{type:'button',onclick:()=>{closeModal();optionsModal({...c,_c:cfg.col},cfg)}},'Opciones'):null,
+        c.custom?h('button',{type:'button',class:'btn-danger','aria-label':'Eliminar '+c.l,onclick:()=>{removed.add(c.k);list=list.filter(x=>x!==c);draw()}},'✕'):null))}))}
+  draw();
+  const add=()=>{const l=nm.value.trim();if(!l){nm.focus();return}const t=tp.value;const k='x_'+uid().slice(-7);const f={k,l,t,w:t==='long'?260:160};if(t==='select'||t==='multi')f.o='f_'+k;added.push(f);list.push({k,l,orig:l,t,o:f.o,w:f.w,hide:false,custom:true});nm.value='';draw()};
+  const save=()=>{const L2=layout();const labels={...(L2.labels||{})};const lab={...(labels[cfg.col]||{})};
+    const fields={...(L2.fields||{})};let fl=[...(fields[cfg.col]||[])].filter(f=>!removed.has(f.k));added.forEach(f=>{if(!removed.has(f.k))fl.push(f)});
+    list.forEach(c=>{const l=(c.l||'').trim()||c.orig;if(c.custom){fl=fl.map(f=>f.k===c.k?{...f,l}:f)}else if(l!==c.orig)lab[c.k]=l;else delete lab[c.k]});
+    labels[cfg.col]=lab;fields[cfg.col]=fl;
+    const options={...(L2.options||{})};added.forEach(f=>{if(f.o&&!options[f.o])options[f.o]={}});
+    const views={...(L2.views||{})};views[cfg._key]={...(views[cfg._key]||{}),cols:list.map(c=>({k:c.k,w:c.w,hide:c.hide})),filters};
+    saveLayout({labels,fields,views,options});closeModal();toast('Campos guardados')};
+  openModal(h('div',{class:'dlg',style:'width:min(820px,100%)'},h('h2',null,'Campos de esta vista',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
+    h('p',{class:'muted',style:'margin:0 0 10px'},'Orden, visibilidad y ancho se guardan para esta vista. El nombre de un campo cambia en todas las vistas de esta tabla.'),
+    h('div',{class:'fe-list'},body),
+    h('div',{class:'fe-add'},h('b',null,'Nuevo campo'),nm,tp,h('button',{type:'button',onclick:add},'＋ Añadir')),
+    h('div',{class:'acts'},h('span'),h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'button',class:'btn-acc',onclick:save},'Guardar')))))}
+const PALETTE=['#20c933','#93e088','#18bfff','#2d7ff9','#2750ae','#8b46ff','#ff08c2','#f82b60','#ff6f2c','#fcb400','#ffd66e','#b87503','#444444','#cccccc'];
+function optionsModal(col,cfg){const cur=O[col.o]||{};let list=Object.entries(cur).map(([n,c])=>({n,orig:n,c:c||'#444444'}));
+  rows(cfg.col).forEach(r=>arr(r[col.k]).forEach(v=>{if(v!==''&&v!=null&&!list.some(x=>x.orig===v))list.push({n:v,orig:v,c:'#444444'})}));
+  const body=h('div');const mv=(i,d)=>{const j=i+d;if(j<0||j>=list.length)return;[list[i],list[j]]=[list[j],list[i]];draw()};
+  const chipC=o=>h('span',{class:'chip',style:`background:${o.c};color:${ink(o.c)}`},o.n||'—');
+  function draw(){body.replaceChildren(...list.map((o,i)=>{const prev=h('span',null,chipC(o));const upd=()=>prev.replaceChildren(chipC(o));
+    return h('div',{class:'fe-row op-row'},h('span',{style:'display:flex;gap:2px'},h('button',{type:'button','aria-label':'Subir '+o.n,onclick:()=>mv(i,-1)},'↑'),h('button',{type:'button','aria-label':'Bajar '+o.n,onclick:()=>mv(i,1)},'↓')),
+      h('input',{type:'color',value:o.c,'aria-label':'Color de '+o.n,oninput:e=>{o.c=e.target.value;upd()}}),
+      h('input',{value:o.n,'aria-label':'Nombre de la opción',oninput:e=>{o.n=e.target.value;upd()}}),prev,
+      h('button',{type:'button',class:'btn-danger','aria-label':'Eliminar '+o.n,onclick:()=>{list=list.filter(x=>x!==o);draw()}},'✕'))}))}
+  draw();
+  const nn=h('input',{placeholder:'Nueva opción','aria-label':'Nueva opción',onkeydown:e=>{if(e.key==='Enter'){e.preventDefault();addO()}}});
+  const addO=()=>{const v=nn.value.trim();if(!v||list.some(x=>x.n===v))return;list.push({n:v,orig:null,c:PALETTE[list.length%PALETTE.length]});nn.value='';draw()};
+  const save=async()=>{const map={};list.forEach(o=>{const n=(o.n||'').trim();if(n&&!(n in map))map[n]=o.c});
+    const ren=list.filter(o=>o.orig&&o.n.trim()&&o.n.trim()!==o.orig).map(o=>[o.orig,o.n.trim()]);
+    const L=layout();saveLayout({options:{...(L.options||{}),[col.o]:map}});
+    let n=0;if(ren.length){const R=new Map(ren);const users=[...new Set([col,...Object.values(PAGES).flatMap(p=>(p.tabs||[p]).map(t=>t.cfg).filter(Boolean)).filter(c=>c.col===cfg.col).flatMap(c=>c.cols).filter(c=>c.o===col.o)].map(c=>c.k))];
+      rows(cfg.col).forEach(r=>{const p={};users.forEach(k=>{const v=r[k];if(Array.isArray(v)){if(v.some(x=>R.has(x)))p[k]=v.map(x=>R.get(x)||x)}else if(R.has(v))p[k]=R.get(v)});if(Object.keys(p).length){n++;patch(cfg.col,r.id,p)}})}
+    closeModal();toast('Opciones guardadas'+(n?' · '+n+' registros actualizados':''))};
+  openModal(h('div',{class:'dlg',style:'width:min(560px,100%)'},h('h2',null,'Opciones de “'+col.l+'”',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
+    h('p',{class:'muted',style:'margin:0 0 10px'},'El orden de aquí es el orden de los grupos. Si cambias un nombre, los registros que lo usan se actualizan. Ojo: la app de la modelo usa los estados To Do, Instructions Added y Recorded.'),
+    h('div',{class:'fe-list'},body),h('div',{class:'fe-add'},nn,h('button',{type:'button',onclick:addO},'＋ Añadir')),
+    h('div',{class:'acts'},h('span'),h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'button',class:'btn-acc',onclick:save},'Guardar')))))}
+
 /* ---------- list view ---------- */
-function vstate(key,cfg){if(!st.views[key])st.views[key]={f:JSON.parse(JSON.stringify(cfg.def||{})),group:[...(cfg.group||[])],sort:cfg.sort||null,closed:new Set(),limit:200};return st.views[key]}
+function vstate(key,cfg){const src=viewSig(cfg.def,cfg.group,cfg.sort);const cur=st.views[key];if(!cur||cur._src!==src)st.views[key]={_src:src,f:JSON.parse(JSON.stringify(cfg.def||{})),group:[...(cfg.group||[])],sort:cfg.sort||null,closed:cur?cur.closed:new Set(),limit:200};return st.views[key]}
 function listView(cfg,key,root){
-  const vs=vstate(key,cfg);cfg.cols.forEach(c=>c._c=cfg.col);const byK=Object.fromEntries(cfg.cols.map(c=>[c.k,c]));
+  cfg=effCfg(cfg,key);const vs=vstate(key,cfg);cfg.cols.forEach(c=>c._c=cfg.col);const byK=Object.fromEntries(cfg.cols.map(c=>[c.k,c]));
   let data=(cfg.global?rows(cfg.col):mine(cfg.col)).filter(cfg.scope||(()=>true));const scoped=data.length;
   for(const k in vs.f){const want=vs.f[k];if(want&&want.length)data=data.filter(r=>arr(r[k]).some(v=>want.includes(v)))}
   const tb=h('div',{class:'toolbar'});
@@ -486,7 +561,10 @@ function listView(cfg,key,root){
   const gOpts=cfg.cols.filter(c=>c.t==='select'||c.t==='multi');
   tb.append(h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt muted',onclick:()=>{vs.group=[];closePop();rerender()}},'No grouping'),...gOpts.map(c=>h('label',null,h('input',{type:'checkbox',checked:vs.group.includes(c.k),onchange:ev=>{vs.group=ev.target.checked?[...vs.group,c.k].slice(0,3):vs.group.filter(x=>x!==c.k);rerender()}}),c.l))])},'Group',vs.group.length?h('span',{class:'badge'},vs.group.length):null),
     h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt muted',onclick:()=>{vs.sort=null;closePop();rerender()}},'Default order'),...[C(cfg.primary,'Name'),...cfg.cols].map(c=>h('div',{class:'opt',onclick:()=>{vs.sort={k:c.k,dir:vs.sort&&vs.sort.k===c.k?-vs.sort.dir:1};closePop();rerender()}},c.l,vs.sort&&vs.sort.k===c.k?(vs.sort.dir>0?' ↑':' ↓'):''))])},'Sort',vs.sort?h('span',{class:'badge'},'1'):null),
-    h('span',{style:'flex:1'}),h('button',{type:'button',class:'btn-acc',onclick:()=>newRecord(cfg)},'＋ New record'));
+    h('span',{style:'flex:1'}),
+    canEdit()&&viewSig(vs.f,vs.group,vs.sort)!==vs._src?h('button',{type:'button',class:'btn-acc',title:'Guarda filtros, agrupación y orden como vista fija para todos',onclick:()=>saveView(cfg,vs)},'💾 Guardar vista'):'',
+    canEdit()?h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt',onclick:()=>{closePop();fieldsModal(cfg)}},'Campos y columnas…'),...cfg.allCols.filter(c=>(c.t==='select'||c.t==='multi')&&c.o).map(c=>h('div',{class:'opt',onclick:()=>{closePop();optionsModal({...c,_c:cfg.col},cfg)}},'Opciones de “'+c.l+'”…')),h('div',{class:'opt muted',onclick:()=>{closePop();resetView(cfg)}},'Restablecer vista original')])},'⚙ Editar'):'',
+    h('button',{type:'button',class:'btn-acc',onclick:()=>newRecord(cfg)},'＋ New record'));
   root.append(tb);
   const cmp=(a,b)=>{if(vs.sort){const x=a[vs.sort.k],y=b[vs.sort.k];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return-1;return(typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),undefined,{numeric:true}))*vs.sort.dir}return(+a.sid||0)-(+b.sid||0)||String(a[cfg.primary]||'').localeCompare(String(b[cfg.primary]||''),undefined,{numeric:true})};
   data.sort(cmp);
@@ -725,6 +803,7 @@ function parseHash(){const x=(location.hash||'').replace('#','');if(!x)return;co
 function go(route,tab){if(route==='modelapp'&&st.route!=='modelapp')Object.assign(ma,{screen:'home',extra:null,f:{},reset:true});const hsh=route+(tab?'-'+tab:'');if(location.hash!=='#'+hsh){try{location.hash=hsh}catch(e){}}st.route=route;st.tab=tab||null;document.body.classList.remove('open');$('#view').scrollTop=0;render()}
 const openSec=ls.get('crm:secs',{});
 function render(){
+  applyLayout();
   if(S.role==='model'&&S.profile){st.route='modelapp';st.model=S.profile.model_id}
   closePop();const s=settings(),m=model();if(m&&st.model!==m.id){st.model=m.id}
   $('#brandName').textContent=s.agency||'Agency';$('#logo').textContent=(s.agency||'A').slice(0,1).toUpperCase();$('#meName').textContent=(S.profile&&(S.profile.display_name||S.profile.email))||s.me||'Owner';$('#outBtn').style.display=S.sb?'':'none';if(S.profile)$('#meRole').textContent=S.role==='admin'?'Admin':'Modelo';$('#meAv').textContent=(s.me||'ME').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
