@@ -667,6 +667,30 @@ function modelApp(v){
 
 /* ---------- access (Supabase profiles) ---------- */
 let accRows=null;
+function newAccessForm(){const em=h('input',{id:'na_email',type:'email',placeholder:'email@ejemplo.com',autocomplete:'off'}),pw=h('input',{id:'na_pw',type:'text',placeholder:'mínimo 8 caracteres',autocomplete:'off'});
+  const gen=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';const r=crypto.getRandomValues(new Uint32Array(12));pw.value=Array.from(r,x=>a[x%a.length]).join('')};
+  const role=h('select',{id:'na_role'},h('option',{value:'model'},'Modelo (solo su app)'),h('option',{value:'admin'},'Admin (todo el CRM)'));
+  const mod=h('select',{id:'na_mod'},h('option',{value:''},'— creadora —'),rows('models').map(m=>h('option',{value:m.id},m.name)));
+  const out=h('div',{class:'hint',role:'status'});const btn=h('button',{type:'submit',class:'btn-acc'},'Crear acceso');
+  const submit=async e=>{e.preventDefault();const email=em.value.trim(),pass=pw.value;out.textContent='';
+    if(!email||pass.length<8){out.textContent='Pon un email y una contraseña de al menos 8 caracteres.';return}
+    if(role.value==='model'&&!mod.value){out.textContent='Elige la creadora de esta cuenta.';return}
+    btn.disabled=true;try{
+      const tmp=window.supabase.createClient(window.SB_URL,window.SB_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'crm-new-user'}});
+      const {data,error}=await tmp.auth.signUp({email,password:pass});if(error)throw error;
+      const uid=data&&data.user&&data.user.id;if(!uid||(data.user.identities&&data.user.identities.length===0))throw new Error('Ese email ya tiene una cuenta.');
+      let ok=false;for(let i=0;i<6&&!ok;i++){const {data:u,error:e2}=await S.sb.from('profiles').update({role:role.value,model_id:role.value==='model'?mod.value:null}).eq('user_id',uid).select();if(e2)throw e2;ok=u&&u.length>0;if(!ok)await new Promise(z=>setTimeout(z,800))}
+      if(!ok)throw new Error('La cuenta se creó pero no se pudo asignar el rol. Asígnalo en la lista.');
+      try{await tmp.auth.signOut()}catch(_){}
+      out.textContent=(data.session?'Acceso creado. Datos para enviar: ':'Acceso creado, pero la persona debe confirmar su email antes de entrar. Datos: ')+location.origin+' · '+email+' · '+pass;
+      em.value='';pw.value='';accRows=null;setTimeout(rerender,4000)
+    }catch(x){out.textContent='No se pudo crear: '+((x&&x.message)||'error')}finally{btn.disabled=false}};
+  return h('form',{class:'na-form',onsubmit:submit,style:'display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:0 0 14px;padding:12px;border:1px solid var(--line,#333);border-radius:10px'},
+    h('div',{class:'f',style:'margin:0'},h('label',{for:'na_email'},'Email'),em),
+    h('div',{class:'f',style:'margin:0'},h('label',{for:'na_pw'},'Contraseña'),h('div',{style:'display:flex;gap:6px'},pw,h('button',{type:'button',onclick:gen},'Generar'))),
+    h('div',{class:'f',style:'margin:0'},h('label',{for:'na_role'},'Rol'),role),
+    h('div',{class:'f',style:'margin:0'},h('label',{for:'na_mod'},'Creadora'),mod),
+    btn,h('div',{style:'flex-basis:100%'},out))}
 async function loadAccess(){const {data,error}=await S.sb.from('profiles').select('*').order('created_at');accRows=error?{err:error.message}:(data||[]);rerender()}
 function accessView(root){
   if(!S.sb){root.append(h('div',{class:'empty'},'Los accesos se gestionan en la versión publicada en Vercel.'));return}
@@ -678,7 +702,8 @@ function accessView(root){
     const mod=h('select',{'aria-label':'Creadora de '+(p.email||'')},h('option',{value:''},'— sin asignar —'),rows('models').map(m=>h('option',{value:m.id,selected:p.model_id===m.id},m.name)));
     body.append(h('tr',null,h('td',null,p.email||'—',isMe?h('span',{class:'muted'},' (tú)'):null),h('td',null,role),h('td',null,mod),h('td',null,h('button',{type:'button',class:'btn-acc',onclick:async()=>{const {error}=await S.sb.from('profiles').update({role:role.value,model_id:mod.value||null}).eq('user_id',p.user_id);if(error)toast('No se pudo guardar: '+error.message);else{toast('Acceso guardado');accRows=null;rerender()}}},'Guardar'))))});
   root.append(h('div',{class:'wrap',style:'max-width:none'},
-    h('p',{class:'muted',style:'max-width:70ch'},'Cada persona crea su cuenta en la pantalla de inicio de sesión con “Crear cuenta”. Después aparece aquí y tú decides su rol. Una Modelo solo ve su app y el contenido de la creadora que le asignes; hasta que la asignes, no ve nada.'),
+    newAccessForm(),
+    h('p',{class:'muted',style:'max-width:70ch'},'Solo tú creas las cuentas. Rellena email, contraseña y creadora, pulsa “Crear acceso” y pásale esos datos a la persona. Una Modelo solo ve su app y el contenido de la creadora asignada.'),
     h('div',{style:'overflow-x:auto'},h('table',{class:'simple'},h('thead',null,h('tr',null,h('th',null,'Email'),h('th',null,'Rol'),h('th',null,'Creadora'),h('th',null,''))),body)),
     h('div',{class:'toolbar',style:'border:none;padding:10px 0'},h('button',{type:'button',onclick:()=>{accRows=null;rerender()}},'Actualizar lista'))))}
 
@@ -733,7 +758,7 @@ function authScreen(mode,msg,isErr){const a=$('#auth');a.classList.add('on');con
   a.replaceChildren(h('div',{class:'auth-card'},
     h('div',{class:'auth-head'},h('span',{class:'auth-logo'},name.slice(0,1).toUpperCase()),h('div',null,h('b',{style:'font-size:16px;display:block'},mode==='signup'?'Crear cuenta':mode==='reset'?'Recuperar contraseña':'Iniciar sesión'),h('span',{class:'muted',style:'font-size:12px'},name))),
     h('form',{class:'auth-box',onsubmit:submit},h('label',{for:'au_email'},'Email'),email,mode==='reset'?null:[h('label',{for:'au_pw'},'Contraseña'),pw],btn,note),
-    h('div',{class:'auth-links'},mode==='login'?[h('button',{type:'button',onclick:()=>authScreen('signup')},'Crear cuenta'),h('button',{type:'button',onclick:()=>authScreen('reset')},'¿Olvidaste la contraseña?')]:h('button',{type:'button',onclick:()=>authScreen('login')},'← Volver a iniciar sesión'))));
+    h('div',{class:'auth-links'},mode==='login'?[h('span'),h('button',{type:'button',onclick:()=>authScreen('reset')},'¿Olvidaste la contraseña?')]:h('button',{type:'button',onclick:()=>authScreen('login')},'← Volver a iniciar sesión'))));
   email.focus()}
 function gateScreen(title,text){const a=$('#auth');a.classList.add('on');a.replaceChildren(h('div',{class:'auth-card'},h('div',{class:'auth-box'},h('b',{style:'font-size:15px'},title),h('p',{class:'muted',style:'margin:4px 0 10px'},text),h('button',{type:'button',onclick:()=>S.sb.auth.signOut()},'Cerrar sesión'))))}
 let starting=false;
