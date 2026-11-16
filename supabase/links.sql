@@ -3,13 +3,13 @@
 
 -- 1. Contadores por página y día (sin datos personales: ni IP ni identificadores)
 create table if not exists public.link_stats (
-  slug     text not null,
+  page     text not null,
   day      date not null default current_date,
   visits   integer not null default 0,
   clicks   integer not null default 0,
   clicks_b integer not null default 0,
   bots     integer not null default 0,
-  primary key (slug, day)
+  primary key (page, day)
 );
 alter table public.link_stats enable row level security;
 drop policy if exists link_stats_admin on public.link_stats;
@@ -39,16 +39,18 @@ $$;
 revoke all on function public.link_has_secret() from public;
 grant execute on function public.link_has_secret() to authenticated;
 
--- 3. Página publicada (solo lo visible; los destinos se entregan aparte si hay verificación)
-create or replace function public.link_row(p_slug text) returns jsonb
+-- 3. Página publicada. Cada página puede tener su dominio (uno por modelo); sin dominio vale en cualquiera.
+create or replace function public.link_row(p_slug text, p_host text) returns jsonb
 language sql stable security definer set search_path = public as $$
-  select data from public.docs
+  select data || jsonb_build_object('_id', id) from public.docs
   where col = 'linkpages' and data->>'pub' = 'Published'
+    and (coalesce(data->>'domain', '') = '' or lower(data->>'domain') = lower(coalesce(p_host, '')))
     and ((coalesce(p_slug, '') <> '' and lower(data->>'slug') = lower(p_slug))
       or (coalesce(p_slug, '') = '' and coalesce((data->>'main_page')::boolean, false)))
+  order by (coalesce(data->>'domain', '') <> '') desc
   limit 1;
 $$;
-revoke all on function public.link_row(text) from public;
+revoke all on function public.link_row(text, text) from public, anon, authenticated;
 
 create or replace function public.link_dest(d jsonb) returns jsonb
 language sql immutable as $$
@@ -56,11 +58,11 @@ language sql immutable as $$
     'buttons', coalesce(d->'buttons', '[]'::jsonb));
 $$;
 
-create or replace function public.link_page(p_slug text) returns jsonb
+create or replace function public.link_page(p_slug text, p_host text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare d jsonb; v boolean; r jsonb;
 begin
-  d := public.link_row(p_slug);
+  d := public.link_row(p_slug, p_host);
   if d is null then return null; end if;
   v := coalesce((d->>'verify')::boolean, false);
   r := jsonb_build_object('slug', d->>'slug', 'name', d->>'page_name', 'bio', d->>'bio', 'theme', d->>'theme',
@@ -70,16 +72,16 @@ begin
   if not v then r := r || public.link_dest(d); end if;
   return r;
 end $$;
-revoke all on function public.link_page(text) from public;
-grant execute on function public.link_page(text) to anon, authenticated;
+revoke all on function public.link_page(text, text) from public;
+grant execute on function public.link_page(text, text) to anon, authenticated;
 
 -- 4. Destinos tras la verificación humana (Cloudflare Turnstile, si está configurado)
 create extension if not exists http with schema extensions;
-create or replace function public.link_open(p_slug text, p_token text) returns jsonb
+create or replace function public.link_open(p_slug text, p_host text, p_token text) returns jsonb
 language plpgsql security definer set search_path = public, extensions as $$
 declare d jsonb; sec text; res jsonb;
 begin
-  d := public.link_row(p_slug);
+  d := public.link_row(p_slug, p_host);
   if d is null then return null; end if;
   if coalesce((d->>'verify')::boolean, false) then
     select v into sec from public.link_config where k = 'turnstile_secret';
@@ -94,23 +96,22 @@ begin
   end if;
   return public.link_dest(d);
 end $$;
-revoke all on function public.link_open(text, text) from public;
-grant execute on function public.link_open(text, text) to anon, authenticated;
+revoke all on function public.link_open(text, text, text) from public;
+grant execute on function public.link_open(text, text, text) to anon, authenticated;
 
 -- 5. Registrar visita / clic / bot (solo suma 1 al contador del día)
-create or replace function public.link_hit(p_slug text, p_kind text) returns void
+create or replace function public.link_hit(p_slug text, p_host text, p_kind text) returns void
 language plpgsql security definer set search_path = public as $$
-declare d jsonb; s text;
+declare d jsonb;
 begin
   if p_kind not in ('visit', 'click', 'click_b', 'bot') then return; end if;
-  d := public.link_row(p_slug);
+  d := public.link_row(p_slug, p_host);
   if d is null then return; end if;
-  s := lower(d->>'slug');
-  insert into public.link_stats (slug, day, visits, clicks, clicks_b, bots)
-  values (s, current_date, (p_kind = 'visit')::int, (p_kind in ('click', 'click_b'))::int, (p_kind = 'click_b')::int, (p_kind = 'bot')::int)
-  on conflict (slug, day) do update set
+  insert into public.link_stats (page, day, visits, clicks, clicks_b, bots)
+  values (d->>'_id', current_date, (p_kind = 'visit')::int, (p_kind in ('click', 'click_b'))::int, (p_kind = 'click_b')::int, (p_kind = 'bot')::int)
+  on conflict (page, day) do update set
     visits = link_stats.visits + excluded.visits, clicks = link_stats.clicks + excluded.clicks,
     clicks_b = link_stats.clicks_b + excluded.clicks_b, bots = link_stats.bots + excluded.bots;
 end $$;
-revoke all on function public.link_hit(text, text) from public;
-grant execute on function public.link_hit(text, text) to anon, authenticated;
+revoke all on function public.link_hit(text, text, text) from public;
+grant execute on function public.link_hit(text, text, text) to anon, authenticated;
