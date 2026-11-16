@@ -30,6 +30,16 @@
   ],
   "rewrites": [
     {
+      "source": "/",
+      "missing": [
+        {
+          "type": "host",
+          "value": ".*\\.vercel\\.app"
+        }
+      ],
+      "destination": "/l"
+    },
+    {
       "source": "/:slug([^/.]+)",
       "destination": "/l"
     }
