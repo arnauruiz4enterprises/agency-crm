@@ -49,13 +49,14 @@ var SB=window.SB_URL,KEY=window.SB_KEY,m=document.getElementById('m');
 var q=new URLSearchParams(location.search);
 var slug=(q.get('s')||decodeURIComponent(location.pathname.replace(/^\/+|\/+$/g,'').split('/').pop()||'')).trim();
 if(/^(l|l\.html)$/i.test(slug))slug='';
+var host=location.hostname.replace(/^www\./,'');
 var ua=navigator.userAgent||'';
 var isBot=!!navigator.webdriver||/bot|crawl|spider|slurp|facebookexternalhit|preview|headless|lighthouse|pingdom|monitor|curl|wget|python|scrapy/i.test(ua);
 var inApp=/Instagram|FBAN|FBAV|FB_IAB|TikTok|musical_ly|BytedanceWebview|Snapchat|Line\/|Twitter|Threads|Barcelona/i.test(ua);
 var isAnd=/Android/i.test(ua),isIOS=/iPhone|iPad|iPod/i.test(ua);
 function el(t,a){var e=document.createElement(t),i;if(a)for(i in a){if(a[i]==null||a[i]===false)continue;if(i==='class')e.className=a[i];else if(i==='text')e.textContent=a[i];else if(i.slice(0,2)==='on')e.addEventListener(i.slice(2),a[i]);else e.setAttribute(i,a[i])}for(i=2;i<arguments.length;i++){var c=arguments[i];if(c)e.appendChild(c.nodeType?c:document.createTextNode(String(c)))}return e}
 function rpc(fn,args,keep){return fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',keepalive:!!keep,headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},body:JSON.stringify(args)}).then(function(r){if(!r.ok)throw new Error('http '+r.status);return r.status===204?null:r.json()})}
-function hit(kind){try{rpc('link_hit',{p_slug:P?P.slug:slug,p_kind:kind},true).catch(function(){})}catch(e){}}
+function hit(kind){try{rpc('link_hit',{p_slug:P?P.slug:slug,p_host:host,p_kind:kind},true).catch(function(){})}catch(e){}}
 function safeUrl(u){if(!u||typeof u!=='string')return null;try{var x=new URL(u.trim());return /^https?:$/.test(x.protocol)?x.href:null}catch(e){return null}}
 function show(node){m.replaceChildren(node)}
 function fail(t){show(el('div',{class:'gate'},el('h2',{text:'Página no disponible'}),el('p',{text:t||'Este enlace no existe o ya no está publicado.'})))}
@@ -87,13 +88,13 @@ function page(){document.title=P.name||'Links';
   show(card)}
 function ready(){if(!once.v){once.v=1;hit(isBot?'bot':'visit')}page()}
 function verify(){var box=el('div',{class:'gate'},el('h2',{text:'Comprobación rápida'}),el('p',{text:'Confirma que eres una persona para continuar.'}));var msg=el('p',{class:'err',role:'alert'});
-  var done=function(tok){rpc('link_open',{p_slug:P.slug,p_token:tok||''}).then(function(r){if(!r||r.error){msg.textContent='No se pudo verificar. Inténtalo otra vez.';if(window.turnstile)try{turnstile.reset()}catch(e){}return}D=r;ready()}).catch(function(){msg.textContent='No se pudo conectar. Recarga la página.'})};
+  var done=function(tok){rpc('link_open',{p_slug:P.slug,p_host:host,p_token:tok||''}).then(function(r){if(!r||r.error){msg.textContent='No se pudo verificar. Inténtalo otra vez.';if(window.turnstile)try{turnstile.reset()}catch(e){}return}D=r;ready()}).catch(function(){msg.textContent='No se pudo conectar. Recarga la página.'})};
   if(P.sitekey){var ts=el('div',{id:'ts'});box.appendChild(ts);window.__ts=function(){turnstile.render(ts,{sitekey:P.sitekey,theme:'dark',callback:done})};
     var s=el('script',{src:'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__ts&render=explicit',async:'',defer:''});document.head.appendChild(s)}
   else{var t0=Date.now();box.appendChild(el('button',{class:'btn',type:'button',onclick:function(e){if(!e.isTrusted||Date.now()-t0<600||isBot){msg.textContent='Inténtalo otra vez.';return}done('')}},'Soy una persona · Continuar'))}
   box.appendChild(msg);show(box)}
 if(!SB||!KEY){fail('Falta la configuración.');return}
-rpc('link_page',{p_slug:slug}).then(function(p){if(!p){document.title='No disponible';fail();return}P=p;document.title=p.name||'Links';
+rpc('link_page',{p_slug:slug,p_host:host}).then(function(p){if(!p){document.title='No disponible';fail();return}P=p;document.title=p.name||'Links';
   if(p.verify){if(isBot){once.v=1;hit('bot')}verify()}else{D=p;ready()}}).catch(function(){fail('No se pudo cargar. Inténtalo de nuevo en un momento.')});
 })();
 </script>
