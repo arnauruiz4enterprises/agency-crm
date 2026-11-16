@@ -1097,7 +1097,7 @@ function analyticsView(tab,root){const acc=mine('accounts');if(!acc.length){root
     if(mp.length){g.reach_30d=mp.reduce((s,p)=>s+p.v,0);g._src.reach_30d='Suma de los “Reach Update” diarios del periodo (Posting)'}
     if(tl&&has(tl.subs)){g.est_subs=+tl.subs;g._src.est_subs='Tracking link “'+tl.name+'” (Funneling)'}
     if(tl&&has(tl.revenue)){g.est_revenue=+tl.revenue;g._src.est_revenue='Tracking link “'+tl.name+'” (Funneling)'}
-    const lc=lps.reduce((s,p)=>s+linkSum(p.slug,N).clicks,0);
+    const lc=lps.reduce((s,p)=>s+linkSum(p.id,N).clicks,0);
     if(lc>0){g.clicks=lc;g._src.clicks='Clics a OnlyFans de su Link Page (Funneling)'}else if(tl&&has(tl.clicks)&&!has(a.clicks)){g.clicks=+tl.clicks;g._src.clicks='Tracking link “'+tl.name+'” (Funneling)'}
     return g});
   const M=[['reach_30d','Reach'],['est_subs','Est. Subs'],['est_revenue','Est. Revenue'],['clicks','Clicks'],['followers','Followers']];
@@ -1134,13 +1134,16 @@ function analyticsView(tab,root){const acc=mine('accounts');if(!acc.length){root
 /* ---------- link pages ---------- */
 const LP_RES=['index','l','config','api','supabase','readme','favicon','robots'];
 const LP_PRE={Instagram:'ig',TikTok:'tt',Twitter:'x',YouTube:'yt','Facebook Page':'fb',Facebook:'fb',Twitch:'tw',Threads:'th',Reddit:'rd',Snapchat:'sc'};
-const linkDomain=()=>{let d=String(settings().link_domain||location.origin).trim().replace(/\/+$/,'');if(!/^https?:\/\//.test(d))d='https://'+d;return d};
-const lpUrl=p=>linkDomain()+'/'+(p.slug||'');
+const normDom=d=>String(d||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'');
+const modelDomain=mid=>normDom((settings().link_domains||{})[mid]);
+const lpHost=p=>normDom(p.domain)||location.host;
+const lpUrl=p=>'https://'+lpHost(p)+'/'+(p.slug||'');
+const lpClash=(a,b)=>a.id!==b.id&&a.slug===b.slug&&(!normDom(a.domain)||!normDom(b.domain)||normDom(a.domain)===normDom(b.domain));
 const httpUrl=u=>{try{const x=new URL(String(u||'').trim());return /^https?:$/.test(x.protocol)?x.href:null}catch(e){return null}};
 function loadLinkStats(force){if(S.mode!=='sb'||S.role!=='admin'||!S.sb)return;if(S.linkStats&&!force)return;S.linkStats=S.linkStats||[];S.sb.from('link_stats').select('*').gte('day',iso(addDays(new Date(),-90))).then(({data,error})=>{S.linkStatsErr=error?error.message:null;S.linkStats=data||[];rerender()})}
-function linkSum(slug,n){const from=iso(addDays(new Date(),-(n-1)));const k=String(slug||'').toLowerCase();const o={visits:0,clicks:0,clicks_b:0,bots:0};(S.linkStats||[]).forEach(r=>{if(r.slug===k&&r.day>=from){o.visits+=r.visits;o.clicks+=r.clicks;o.clicks_b+=r.clicks_b;o.bots+=r.bots}});return o}
-function newLinkPage(a){const m=a&&S.d.models.get(a.model);const base=((a&&LP_PRE[a.platform])||'')+String(a?a.name:'page').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]+/g,'');let slug=base||'page',i=2;while(rows('linkpages').some(p=>p.slug===slug)||LP_RES.includes(slug))slug=base+(i++);
-  return {id:'lp-'+uid(),name:a?a.name:'New page',account_id:a?a.id:null,model:a?a.model:(model()||{}).id||null,platform:a?a.platform:null,pub:'Draft',format:'Page',slug,page_name:m?m.name:'',bio:'',theme:'Dark',online:true,photo:'',dest:a&&a.of_link||'',dest_b:'',split:50,btn_text:'Mi OnlyFans',btn_img:'',buttons:[],verify:true,main_page:false}}
+function linkSum(pid,n){const from=iso(addDays(new Date(),-(n-1)));const k=String(pid||'');const o={visits:0,clicks:0,clicks_b:0,bots:0};(S.linkStats||[]).forEach(r=>{if(r.page===k&&r.day>=from){o.visits+=r.visits;o.clicks+=r.clicks;o.clicks_b+=r.clicks_b;o.bots+=r.bots}});return o}
+function newLinkPage(a){const m=a&&S.d.models.get(a.model);const base=((a&&LP_PRE[a.platform])||'')+String(a?a.name:'page').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]+/g,'');const mid=a?a.model:(model()||{}).id||null;const domain=modelDomain(mid);let slug=base||'page',i=2;while(rows('linkpages').some(p=>lpClash(p,{id:'',slug,domain}))||LP_RES.includes(slug))slug=base+(i++);
+  return {id:'lp-'+uid(),name:a?a.name:'New page',account_id:a?a.id:null,model:mid,domain,platform:a?a.platform:null,pub:'Draft',format:'Page',slug,page_name:m?m.name:'',bio:'',theme:'Dark',online:true,photo:'',dest:a&&a.of_link||'',dest_b:'',split:50,btn_text:'Mi OnlyFans',btn_img:'',buttons:[],verify:true,main_page:false}}
 function turnstileDlg(){const site=h('input',{id:'ts_site',autocomplete:'off',placeholder:'0x4AAAA…'}),sec=h('input',{id:'ts_sec',type:'password',autocomplete:'off',placeholder:'Pégala aquí (no se vuelve a mostrar)'});const state=h('div',{class:'hint'},'Comprobando…');
   if(S.sb)S.sb.rpc('link_has_secret').then(({data,error})=>{if(error){state.textContent='Falta ejecutar supabase/links.sql en Supabase ('+error.message+').';return}site.value=(data&&data.sitekey)||'';state.textContent=data&&data.sitekey&&data.secret?'Turnstile está configurado: las páginas con verificación piden la comprobación de Cloudflare.':'Sin configurar: las páginas con verificación usan la comprobación sencilla (botón “Soy una persona”).'});else state.textContent='Solo disponible con la base de datos conectada.';
   openModal(h('form',{class:'dlg',style:'width:min(560px,100%)',onsubmit:async e=>{e.preventDefault();if(!S.sb)return;const a=await S.sb.rpc('link_set_config',{p_k:'turnstile_sitekey',p_v:site.value.trim()});let b={};if(sec.value.trim()||!site.value.trim())b=await S.sb.rpc('link_set_config',{p_k:'turnstile_secret',p_v:site.value.trim()?sec.value.trim():''});const err=a.error||b.error;if(err)return toast('No se pudo guardar: '+err.message);closeModal();toast('Verificación guardada')}},
@@ -1149,7 +1152,7 @@ function turnstileDlg(){const site=h('input',{id:'ts_site',autocomplete:'off',pl
     h('div',{class:'f'},h('label',{for:'ts_site'},'Site key'),site),h('div',{class:'f'},h('label',{for:'ts_sec'},'Secret key'),sec),state,
     h('div',{class:'acts'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'submit',class:'btn-acc'},'Guardar'))))}
 function linkEditor(id){const orig=S.d.linkpages.get(id);if(!orig)return;const p=JSON.parse(JSON.stringify(orig));p.buttons=Array.isArray(p.buttons)?p.buttons:[];const a=p.account_id&&S.d.accounts.get(p.account_id);
-  const st30=linkSum(orig.slug,30);const body=h('div');const err=h('div',{class:'hint',role:'alert',style:'color:var(--danger)'});
+  const st30=linkSum(orig.id,30);const body=h('div');const err=h('div',{class:'hint',role:'alert',style:'color:var(--danger)'});
   const inp=(k,x)=>h('input',{id:'lp_'+k,value:p[k]==null?'':p[k],...(x||{}),oninput:e=>{p[k]=e.target.value}});
   const F=(label,ctl,hint,idFor)=>h('div',{class:'f'},h('label',{for:idFor||ctl.id||null},label),h('div',null,ctl,hint?h('div',{class:'hint'},hint):null));
   const seg=(k,opts)=>h('div',{class:'seg',role:'group'},opts.map(o=>h('button',{type:'button',class:p[k]===o?'on':'','aria-pressed':String(p[k]===o),onclick:()=>{p[k]=o;draw()}},o)));
@@ -1160,7 +1163,7 @@ function linkEditor(id){const orig=S.d.linkpages.get(id);if(!orig)return;const p
       h('div',{class:'kpis',style:'margin-bottom:12px'},[['Visits · 30 days',fmt(st30.visits)],['OnlyFans clicks',fmt(st30.clicks)],['Conversion',st30.visits?Math.round(st30.clicks/st30.visits*100)+'%':'—'],['Bots filtered',fmt(st30.bots)]].map(([k,v])=>h('div',{class:'kpi'},h('div',{class:'k'},k),h('div',{class:'v',style:'font-size:20px'},v)))),
       p.dest_b&&st30.clicks?h('div',{class:'hint',style:'margin:-4px 0 10px'},'A/B · Link A: '+fmt(st30.clicks-st30.clicks_b)+' clics · Link B: '+fmt(st30.clicks_b)+' clics'):null,
       F('Formato',seg('format',['Page','Direct (18+)','Breakout']),p.format==='Page'?'Página con foto, nombre y botones.':p.format==='Direct (18+)'?'Aviso de contenido para mayores de 18 y salto directo a OnlyFans.':'Como Page, y además intenta abrirse en el navegador del móvil cuando se entra desde Instagram, TikTok, etc.'),
-      F('Dirección',h('div',{style:'display:flex;gap:6px;align-items:center'},h('span',{class:'muted',style:'white-space:nowrap'},linkDomain().replace(/^https?:\/\//,'')+'/'),inp('slug',{placeholder:'igsweetmiranda',autocapitalize:'off',spellcheck:'false'})),'Solo letras minúsculas, números, guion y guion bajo.','lp_slug'),
+      F('Dirección',h('div',{style:'display:flex;gap:6px;align-items:center'},h('span',{class:'muted',style:'white-space:nowrap'},lpHost(p)+'/'),inp('slug',{placeholder:'igsweetmiranda',autocapitalize:'off',spellcheck:'false'})),'Solo letras minúsculas, números, guion y guion bajo.','lp_slug'),
       F('Cuenta',h('select',{id:'lp_acc',onchange:e=>{p.account_id=e.target.value||null;const x=S.d.accounts.get(p.account_id);if(x){p.name=x.name;p.platform=x.platform;p.model=x.model}}},h('option',{value:''},'— sin cuenta —'),rows('accounts').map(x=>h('option',{value:x.id,selected:x.id===p.account_id},(x.platform?x.platform+' · ':'')+x.name))),'Conecta los clics de esta página con la cuenta en Analytics.'),
       isPage?[F('Nombre',inp('page_name',{maxlength:'60'})),F('Bio',h('textarea',{id:'lp_bio',maxlength:'160',rows:'2',oninput:e=>{p.bio=e.target.value}},p.bio||''),'Máximo 160 caracteres.'),
         F('Tema',seg('theme',['Dark','Warm minimal']),p.theme==='Warm minimal'?'Tarjeta redondeada sobre una copia desenfocada de la foto de fondo.':'Foto a pantalla completa con el texto encima.'),
@@ -1173,15 +1176,15 @@ function linkEditor(id){const orig=S.d.linkpages.get(id);if(!orig)return;const p
             h('button',{type:'button','aria-label':'Subir',disabled:i===0,onclick:()=>{p.buttons.splice(i-1,0,p.buttons.splice(i,1)[0]);draw()}},'↑'),h('button',{type:'button','aria-label':'Bajar',disabled:i===p.buttons.length-1,onclick:()=>{p.buttons.splice(i+1,0,p.buttons.splice(i,1)[0]);draw()}},'↓'),h('button',{type:'button','aria-label':'Quitar botón',onclick:()=>{p.buttons.splice(i,1);draw()}},'✕'))),
           p.buttons.length<19?h('button',{type:'button',onclick:()=>{p.buttons.push({label:'',url:''});draw()}},'＋ Add button'):null))]:null,
       F('Verificación humana',chk('verify','Pedir a cada visitante que confirme que es una persona antes de ver los links'),'Con Turnstile configurado usa la comprobación de Cloudflare; si no, un botón sencillo.','lp_verify'),
-      F('Página principal',chk('main_page','Mostrar esta página en la raíz del dominio de links'),null,'lp_main_page')].flat(9).filter(Boolean))};
+      F('Página principal',chk('main_page','Mostrar esta página en la raíz del dominio ('+lpHost(p)+')'),null,'lp_main_page')].flat(9).filter(Boolean))};
   const save=pub=>{err.textContent='';p.slug=String(p.slug||'').trim().toLowerCase();p.split=Math.max(0,Math.min(100,+p.split||0));p.buttons=p.buttons.filter(b=>b.label||b.url).map(b=>({label:String(b.label||'').trim(),url:String(b.url||'').trim()}));
     if(!/^[a-z0-9][a-z0-9_-]{1,48}$/.test(p.slug))return err.textContent='La dirección necesita entre 2 y 49 caracteres: minúsculas, números, guion o guion bajo.';
     if(LP_RES.includes(p.slug))return err.textContent='Esa dirección está reservada. Elige otra.';
-    if(rows('linkpages').some(x=>x.id!==p.id&&x.slug===p.slug))return err.textContent='Ya hay otra página con esa dirección.';
+    if(rows('linkpages').some(x=>lpClash(x,p)))return err.textContent='Ya hay otra página con esa dirección en este dominio.';
     for(const k of ['dest','dest_b','photo','btn_img'])if(p[k]&&!httpUrl(p[k]))return err.textContent='Este link no es válido (tiene que empezar por https://): '+p[k];
     const bad=p.buttons.find(b=>!b.label||!httpUrl(b.url));if(bad)return err.textContent='Cada botón necesita un texto y un link que empiece por https://.';
     if(pub)p.pub=pub;if(p.pub==='Published'&&!httpUrl(p.dest))return err.textContent='Para publicar hace falta el destino de OnlyFans.';
-    if(p.main_page)rows('linkpages').forEach(x=>{if(x.id!==p.id&&x.main_page)put('linkpages',x.id,{...x,main_page:false},true)});
+    if(p.main_page)rows('linkpages').forEach(x=>{if(x.id!==p.id&&x.main_page&&normDom(x.domain)===normDom(p.domain))put('linkpages',x.id,{...x,main_page:false},true)});
     put('linkpages',p.id,p);closeModal();toast(p.pub==='Published'?'Publicada: '+lpUrl(p).replace(/^https?:\/\//,''):'Guardada como borrador')};
   draw();
   openModal(h('div',{class:'dlg',style:'width:min(760px,100%)'},
@@ -1190,17 +1193,24 @@ function linkEditor(id){const orig=S.d.linkpages.get(id);if(!orig)return;const p
     body,err,
     h('div',{class:'acts'},h('button',{type:'button',class:'btn-danger',onclick:()=>confirmDlg('¿Borrar esta página? El link dejará de funcionar.','Borrar',()=>del('linkpages',p.id))},'Borrar'),
       h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end'},orig.pub==='Published'?h('button',{type:'button',onclick:()=>save('Draft')},'Unpublish'):h('button',{type:'button',onclick:()=>save('Draft')},'Guardar borrador'),h('button',{type:'button',class:'btn-acc',onclick:()=>save('Published')},orig.pub==='Published'?'Republish':'Publish')))))}
-function linkPagesView(root){loadLinkStats();const pages=rows('linkpages');const accs=rows('accounts').filter(a=>a.name&&a.platform);const free=accs.filter(a=>!pages.some(p=>p.account_id===a.id));
+function domainDlg(m){const old=modelDomain(m.id);const i=h('input',{id:'lp_dom',value:old,placeholder:'ejemplo.link',autocapitalize:'off',spellcheck:'false'});
+  openModal(h('form',{class:'dlg',style:'width:min(540px,100%)',onsubmit:e=>{e.preventDefault();const d=normDom(i.value);if(d&&!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d))return toast('Ese dominio no es válido');
+      put('settings','main',{...settings(),link_domains:{...(settings().link_domains||{}),[m.id]:d||null}});
+      rows('linkpages').forEach(p=>{if(p.model===m.id&&normDom(p.domain)===old)put('linkpages',p.id,{...p,domain:d},true)});closeModal();toast(d?'Dominio guardado: '+d:'Ahora usa la dirección del CRM')}},
+    h('h2',null,'Dominio de '+m.name,h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
+    h('p',{class:'muted',style:'margin-top:0'},'Cada modelo puede tener su propio dominio. Primero añádelo al proyecto en Vercel (Settings → Domains) y copia en tu proveedor los registros DNS que te indique. Después escríbelo aquí: todas las páginas de este modelo pasan a usarlo. Vacío = dirección del CRM.'),
+    h('div',{class:'f'},h('label',{for:'lp_dom'},'Dominio'),i),h('div',{class:'acts'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'submit',class:'btn-acc'},'Guardar'))))}
+function linkPagesView(root){loadLinkStats();const pages=mine('linkpages');const accs=mine('accounts').filter(a=>a.name&&a.platform);const cm=model();const free=accs.filter(a=>!pages.some(p=>p.account_id===a.id));
   const create=a=>{const p=newLinkPage(a);put('linkpages',p.id,p);linkEditor(p.id)};
   root.append(h('div',{class:'wrap',style:'max-width:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center'},
     h('button',{type:'button',class:'btn-acc',onclick:e=>pop(e.currentTarget,[h('div',{class:'opt',onclick:()=>{closePop();create(null)}},'Página sin cuenta'),...free.map(a=>h('div',{class:'opt',onclick:()=>{closePop();create(a)}},platIcon(a.platform),' ',a.name))])},'＋ New page'),
-    h('button',{type:'button',title:'Dominio que usan tus links',onclick:()=>{const i=h('input',{id:'lp_dom',value:settings().link_domain||'',placeholder:location.host});openModal(h('form',{class:'dlg',style:'width:min(520px,100%)',onsubmit:e=>{e.preventDefault();put('settings','main',{...settings(),link_domain:i.value.trim().replace(/\/+$/,'')||null});closeModal()}},h('h2',null,'Dominio de los links'),h('p',{class:'muted',style:'margin-top:0'},'El dominio tiene que estar añadido al proyecto en Vercel (Settings → Domains). Déjalo vacío para usar la dirección del CRM.'),h('div',{class:'f'},h('label',{for:'lp_dom'},'Dominio'),i),h('div',{class:'acts'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'submit',class:'btn-acc'},'Guardar'))))}},'Dominio: '+linkDomain().replace(/^https?:\/\//,'')),
+    cm?h('button',{type:'button',title:'Dominio propio de los links de '+cm.name,onclick:()=>domainDlg(cm)},'Dominio de '+cm.name+': '+(modelDomain(cm.id)||location.host)):null,
     h('button',{type:'button',onclick:turnstileDlg},'Verificación humana'),h('button',{type:'button',onclick:()=>loadLinkStats(true),title:'Actualizar estadísticas'},'↻ Stats')));
   if(S.linkStatsErr)root.append(h('div',{class:'empty',style:'padding:8px 16px;color:var(--danger)'},'Las páginas públicas todavía no están activas: falta ejecutar supabase/links.sql en Supabase. ('+S.linkStatsErr+')'));
   const heads=['Platform','Page','Format','Address','Verification','Visits · 30d','OF clicks','Conversion','Bots filtered','Editor'];
   const lv=h('div',{class:'lv',style:'--cols:220px 130px 110px 120px 280px 110px 110px 110px 110px 110px 130px'});lv.append(h('div',{class:'lhead'},h('div',null,'Account'),heads.map(x=>h('div',null,x))));
   const cell=(l,...k)=>h('div',{class:'cell ro'},h('span',{class:'lbl'},l),h('span',null,...k));
-  pages.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).forEach(p=>{const s=linkSum(p.slug,30);lv.append(h('div',{class:'lrow',ondblclick:()=>linkEditor(p.id)},h('div',{class:'t'},h('span',null,p.name||'—',p.main_page?h('div',{class:'muted',style:'font-weight:400;font-size:11px'},'Página principal del dominio'):null)),
+  pages.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).forEach(p=>{const s=linkSum(p.id,30);lv.append(h('div',{class:'lrow',ondblclick:()=>linkEditor(p.id)},h('div',{class:'t'},h('span',null,p.name||'—',p.main_page?h('div',{class:'muted',style:'font-weight:400;font-size:11px'},'Página principal del dominio'):null)),
     cell('Platform',p.platform?[platIcon(p.platform),' ',p.platform]:'—'),cell('Page',chip(p.pub||'Draft','link_pub')),cell('Format',chip(p.format||'Page','link_format')),cell('Address',p.pub==='Published'?h('a',{href:lpUrl(p),target:'_blank',rel:'noopener'},lpUrl(p).replace(/^https?:\/\//,'')):h('span',{class:'muted'},lpUrl(p).replace(/^https?:\/\//,''))),
     cell('Verification',chip(p.verify?'On':'Off','cloaking')),cell('Visits · 30d',fmt(s.visits)),cell('OF clicks',fmt(s.clicks)),cell('Conversion',s.visits?Math.round(s.clicks/s.visits*100)+'%':'—'),cell('Bots filtered',fmt(s.bots)),
     h('div',{class:'cell'},h('button',{type:'button',onclick:()=>linkEditor(p.id)},'Open editor'))))});
