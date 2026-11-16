@@ -362,7 +362,7 @@ const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.par
 
 /* ---------- options ---------- */
 const O={
- content_status:{'Raw Content':'#18bfff','Template':'#444444','To Do':'#ffd66e','Instructions Added':'#b87503','Recorded':'#2750ae','Edited':'#8b46ff','Approved':'#fcb400','Not Approved':'#ff6f2c','Semi-Posted':'#93e088','Posted':'#20c933','Archived':'#338a17','Proposal':'#444444','Not Done':'#f82b60'},
+ content_status:{'Raw Content':'#18bfff','Template':'#444444','To Do':'#ffd66e','Instructions Added':'#b87503','Recorded':'#2750ae','Edited':'#8b46ff','Approved':'#fcb400','Not Approved':'#ff6f2c','Semi-Posted':'#93e088','Posted':'#20c933','Not Done':'#f82b60','Archived':'#338a17','Proposal':'#444444'},
  account_status:{'Running & Posting':'#20c933','Paused & Inactive':'#fcb400','Warming Up':'#d0f0fd','Cooling Down':'#2d7ff9','Pending':'#ede2fe','Suspended for Appeal':'#f82b60','Suspended Selfie Loop':'#ba1e45','Verification Pending (NO USE)':'#d1f7c4','Login Issue':'#cccccc','Managed By Model':'#ffa981','Backup Running':'#93e088','Private Account Back Up':'#9cc7ff','Private Funneling':'#cfdfff','Disabled':'#444444'},
  health:{'✅ No Flags':'#20c933','Search Ban':'#f82b60','Shadowban':'#ff6f2c','Reach Limit':'#fcb400','Action Block':'#ba1e45'},
  platform:{'Instagram':'#f82b60','TikTok':'#20d9d2','Twitter':'#77d1f3','YouTube':'#e5484d','Facebook Page':'#2750ae','Twitch':'#8b46ff','Threads':'#cccccc','Snapchat':'#ffd66e','Reddit':'#ff6f2c'},
@@ -646,8 +646,9 @@ const O0=JSON.parse(JSON.stringify(O));
 const canEdit=()=>!S.sb||S.role==='admin';
 const layout=()=>S.d.settings.get('layout')||{};
 let layoutStamp=null;
-function applyLayout(){const L=layout();const stamp=JSON.stringify(L.options||{});if(stamp===layoutStamp)return;layoutStamp=stamp;Object.keys(O).forEach(k=>{if(!(k in O0))delete O[k]});Object.assign(O,JSON.parse(JSON.stringify(O0)),L.options||{})}
-function saveLayout(p){const L={...layout(),...p};delete L.id;layoutStamp=null;return put('settings','layout',L)}
+function applyLayout(){const L=layout();const stamp=JSON.stringify([L.options||{},L.optOrder||{}]);if(stamp===layoutStamp)return;layoutStamp=stamp;Object.keys(O).forEach(k=>{if(!(k in O0))delete O[k]});Object.assign(O,JSON.parse(JSON.stringify(O0)),L.options||{});
+  Object.entries(L.optOrder||{}).forEach(([k,ord])=>{const cur=O[k];if(!cur||!Array.isArray(ord))return;const o={};ord.forEach(n=>{if(n in cur)o[n]=cur[n]});Object.keys(cur).forEach(n=>{if(!(n in o))o[n]=cur[n]});O[k]=o})}
+function saveLayout(p){const L={...layout(),...p};delete L.id;if(p.options){L.optOrder={...(L.optOrder||{})};Object.entries(p.options).forEach(([k,v])=>{if(v&&typeof v==='object')L.optOrder[k]=Object.keys(v)})}layoutStamp=null;return put('settings','layout',L)}
 function effCfg(cfg,key){const L=layout();const lab=(L.labels||{})[cfg.col]||{};const V=(L.views||{})[key]||{};
   let cols=[...cfg.cols];const have=new Set(cols.map(c=>c.k));
   ((L.fields||{})[cfg.col]||[]).forEach(f=>{if(!have.has(f.k)){cols.push(C(f.k,f.l,f.t,{o:f.o,free:f.o?1:undefined,w:f.w||160,custom:1}));have.add(f.k)}});
