@@ -305,7 +305,27 @@ body.mview .dlg .btn-acc{color:#fff;background:#232a4a;border-color:#232a4a}
 .ma .ma-seg button.on,.ma .ma-seg button.on:hover{background:var(--ma-navy);color:#fff}
 .ma-filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .ma .ma-filters select{background:#fff;border:1px solid var(--ma-line);border-radius:10px;padding:8px;color:var(--ma-ink)}
-.ma .ma-attach{position:relative;display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px 16px;border:1.5px dashed #c9a94e;border-radius:14px;background:#faf6ee;color:var(--ma-ink);cursor:pointer}
+.ma .ma-item{position:relative;padding:0;overflow:hidden}
+.ma-item-main{display:block;width:100%;background:none;border:none;text-align:left;color:inherit;font:inherit;padding:12px 14px 12px 48px;cursor:pointer}
+.ma-tog{position:absolute;left:10px;top:12px;width:30px;height:30px;border-radius:50%;border:1px solid var(--ma-line);background:#faf8f2;color:var(--ma-ink);display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;cursor:pointer;z-index:1;padding:0}
+.ma .ma-tog{background:#faf8f2;color:var(--ma-ink);border:1px solid var(--ma-line);min-height:0}.ma .ma-tog[aria-expanded=true]{background:var(--ma-navy);color:#fff;border-color:var(--ma-navy)}
+.ma-tog span{display:inline-block;transition:transform .2s}.ma-tog[aria-expanded=true] span{transform:rotate(90deg)}.ma-tog:focus-visible,.ma-item-main:focus-visible{outline:2px solid var(--ma-navy);outline-offset:-2px}
+.ma-more{padding:2px 14px 14px;border-top:1px dashed var(--ma-line);margin:0 14px}.ma-more .ma-k{margin-top:12px}
+.ma-minfo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:6px}.ma-minfo b{font-size:15px}
+.ma-more-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.ma-more-acts .ma-btn{min-height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+@media (max-width:480px){.ma-minfo{grid-template-columns:1fr 1fr}.ma-more-acts{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.ma-tog span{transition:none}}
+.ma-reject{background:#fdecec;border:1px solid #f3c3c0}.ma-refc{margin-top:12px}.ma-refc.ma-reject{padding:10px 12px;border-radius:12px}
+.ma-refacts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ma-refacts .ma-btn{min-height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.ma-refwrap{margin:10px auto 0;max-width:360px;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000}.ma-refwrap iframe{width:100%;height:100%;border:0;display:block}
+.ma-more-acts.one{grid-template-columns:1fr}
+.fed-i.redo .fthumb{outline:3px solid var(--danger);outline-offset:1px}.fed-redotag{font-size:11px;font-weight:700;color:var(--danger);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fed-redo{margin-top:4px}.fed-redo input{width:100%;font-size:12px;padding:4px 6px}
+.ma-uphead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ma-count{font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px;background:#fff4d6;color:#8a5a00;font-variant-numeric:tabular-nums}.ma-count.ok{background:#e3f6e8;color:#1c7a3a}.ma-count.over{background:#fdecec;color:#b3261e}
+.ma-upmsg{margin-top:10px;font-size:13px;font-weight:600;padding:8px 10px;border-radius:10px;background:#fff4d6;color:#8a5a00}.ma-upmsg.ok{background:#e3f6e8;color:#1c7a3a}.ma-upmsg.over{background:#fdecec;color:#b3261e}
+.ma-file .fthumb{width:44px;height:44px}
+.ma-attach{position:relative;display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px 16px;border:1.5px dashed #c9a94e;border-radius:14px;background:#faf6ee;color:var(--ma-ink);cursor:pointer}
 .ma-attach:hover{background:#f5eedd}.ma-attach:focus-within{outline:2px solid var(--ma-navy);outline-offset:2px}
 .sr-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
 .ma-fnote{font-size:12px;color:#b3261e;margin-top:6px}.ma-fnote:empty{display:none}
@@ -454,6 +474,8 @@ function accFind(label){if(!label)return null;const all=rows('accounts');return 
 function accChip(label){const a=accFind(label);const c=a&&O.account_status&&O.account_status[a.status];return h('span',{class:'chip g accchip',title:label},a?platIcon(a.platform):null,c?h('span',{class:'sdot',style:'background:'+c}):null,h('span',null,label))}
 function repsOf(labels){const cnt={};arr(labels).forEach(l=>{const a=accFind(l);const p=a?(a.platform||'?'):'?';cnt[p]=(cnt[p]||0)+1});const v=Math.max(0,...Object.values(cnt));return v||0}
 const repsFor=r=>r.reps_dont_matter?1:(repsOf(r.accounts)||null);
+const calcReq=r=>{const reps=r.reps_dont_matter?1:(repsOf(r.accounts)||1);const per=Math.max(1,Math.round(+r.shots)||1);return {reps,per,files:reps*per}};
+const reqOf=r=>{if(r.files_needed!=null&&r.reps_needed!=null){const reps=+r.reps_needed||1;return {reps,per:Math.max(1,Math.round(+r.files_needed/reps)||1),files:+r.files_needed||1}}return S.role==='model'?{reps:1,per:Math.max(1,Math.round(+r.shots)||1),files:Math.max(1,Math.round(+r.shots)||1)}:calcReq(r)};
 function chip(v,ok){if(v==null||v==='')return null;let c=ok&&O[ok]&&O[ok][v];if(!c&&ok)c=hashC(v);return h('span',{class:'chip'+(c?'':' g'),style:c?`background:${c};color:${ink(c)}`:null,title:String(v)},String(v))}
 
 /* ---------- store ---------- */
@@ -465,12 +487,12 @@ let rT=null;const rerender=()=>{clearTimeout(rT);rT=setTimeout(render,40)};
 const soft=()=>{clearTimeout(rT);rT=setTimeout(()=>{st.keepPop=true;try{render()}finally{st.keepPop=false}},30)};
 function saveLocal(c){if(S.mode==='local')ls.set('crm:'+c,rows(c))}
 function clean(o){const r={};for(const k in o){if(k==='id'||o[k]===undefined)continue;r[k]=o[k]}return r}
-function put(c,id,data,quiet){const row={...data,id};const prev=S.d[c].get(id);S.d[c].set(id,row);try{afterPut(c,row,prev)}catch(e){}if(!quiet)rerender();
+function put(c,id,data,quiet){const row={...data,id};const prev0=S.d[c].get(id);if(c==='content'&&S.role!=='model'&&S.loaded){const q=calcReq(row);row.reps_needed=q.reps;row.files_needed=q.files;if(!quiet&&row.status==='Not Approved'&&(!prev0||prev0.status!=='Not Approved')&&!String(row.reject_reason||'').trim())setTimeout(()=>toast('Vuelve a la app de la modelo. Escribe el “Motivo de rechazo” para que sepa qué corregir.'),300)}const prev=S.d[c].get(id);S.d[c].set(id,row);try{afterPut(c,row,prev)}catch(e){}if(!quiet)rerender();
   if(S.mode==='sb')return sbPut(c,row);
   if(S.mode==='db'){const p=c+'/'+id;S.q[p]=(S.q[p]||Promise.resolve()).then(()=>S.db.collection(c).doc(id).set(clean(row))).catch(e=>{toast('Could not save: '+((e&&e.code)||'error')+'. Check your access to this page.')});return S.q[p]}
   saveLocal(c);return Promise.resolve()}
 function patch(c,id,p){const cur=S.d[c].get(id)||{};return put(c,id,{...cur,...p})}
-function del(c,id){const old=S.d[c].get(id);if(old&&old.attachments&&S.mode==='sb')removeFiles(old.attachments);S.d[c].delete(id);rerender();if(S.mode==='sb'){S.sb.from('docs').delete().eq('col',c).eq('id',String(id)).then(({error})=>{if(error)toast('No se pudo borrar: '+error.message)})}else if(S.mode==='db'){S.db.collection(c).doc(id).delete().catch(()=>toast('Could not delete.'))}else saveLocal(c)}
+function del(c,id){const old=S.d[c].get(id);if(old&&S.mode==='sb')['attachments','raw_files'].forEach(k=>{if(old[k])removeFiles(old[k])});S.d[c].delete(id);rerender();if(S.mode==='sb'){S.sb.from('docs').delete().eq('col',c).eq('id',String(id)).then(({error})=>{if(error)toast('No se pudo borrar: '+error.message)})}else if(S.mode==='db'){S.db.collection(c).doc(id).delete().catch(()=>toast('Could not delete.'))}else saveLocal(c)}
 const sbRec=(c,row)=>({col:c,id:String(row.id),model:c==='models'?String(row.id):(row.model||null),data:clean(row),updated_at:new Date().toISOString()});
 function sbPut(c,row){const p=c+'/'+row.id;const rec=sbRec(c,row);
   S.q[p]=(S.q[p]||Promise.resolve()).then(async()=>{const {error}=S.role==='model'?await S.sb.from('docs').insert(rec):await S.sb.from('docs').upsert(rec);if(error)toast('No se pudo guardar: '+error.message)}).catch(()=>toast('No se pudo guardar. Revisa tu conexión.'));return S.q[p]}
@@ -503,7 +525,7 @@ const accLabel=a=>[a.country,a.name,a.branding,a.status].map(x=>x||'').join('-')
 
 /* ---------- column sets ---------- */
 const C=(k,l,t,x)=>({k,l,t:t||'text',...(x||{})});
-const contentCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:260}),C('_reps','Repetitions','number',{ro:1,calc:repsFor,w:110}),C('status','Status','select',{o:'content_status',w:150}),C('country','Country','select',{o:'country',w:90}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('concept','Concept','text',{w:140}),C('tags','Tags','multi',{w:150}),C('model_tags','Model Tags','multi',{w:150}),C('content_plan','Content Plan','multi',{from:()=>planOptions(),plan:1,w:170}),C('reference_link','Reference Link','url',{w:150}),C('instructions','Instructions','long',{w:280}),C('due_date','Due Date','date',{w:120}),C('reps_dont_matter',"Model Repetitions Don't Matter",'check',{w:120}),C('trial_reels','Trial Reels','check',{w:90}),C('shots','Number of Shots','number',{w:100,sum:1}),C('attachments_model','Number of Attachments (Model)','number',{w:120,sum:1}),C('raw_drive','Raw Content (Drive Link)','url',{w:200}),C('edited_drive','Edited Content (Drive Link)','url',{w:200}),C('variations_posted','Variations Posted','number',{w:100,sum:1}),C('ig_link','IG Link','url',{w:160}),C('model_feedback','Model Feedback','long',{w:180}),C('model_rating','Model Rating','select',{o:'rating',w:100}),C('type','Content Type','select',{o:'content_type',w:140})];
+const contentCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:260}),C('_reps','Repetitions','number',{ro:1,calc:repsFor,w:110}),C('status','Status','select',{o:'content_status',w:150}),C('country','Country','select',{o:'country',w:90}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('concept','Concept','text',{w:140}),C('tags','Tags','multi',{w:150}),C('model_tags','Model Tags','multi',{w:150}),C('content_plan','Content Plan','multi',{from:()=>planOptions(),plan:1,w:170}),C('reference_link','Reference Link','url',{w:150}),C('instructions','Instructions','long',{w:280}),C('due_date','Due Date','date',{w:120}),C('reps_dont_matter',"Model Repetitions Don't Matter",'check',{w:120}),C('trial_reels','Trial Reels','check',{w:90}),C('shots','Number of Shots','number',{w:100,sum:1}),C('attachments_model','Number of Attachments (Model)','number',{w:120,sum:1}),C('raw_files','Raw Files (Model)','files',{w:200}),C('reject_reason','Motivo de rechazo (para la modelo)','long',{w:240}),C('raw_drive','Raw Content (Drive Link)','url',{w:200}),C('edited_drive','Edited Content (Drive Link)','url',{w:200}),C('variations_posted','Variations Posted','number',{w:100,sum:1}),C('ig_link','IG Link','url',{w:160}),C('model_feedback','Model Feedback','long',{w:180}),C('model_rating','Model Rating','select',{o:'rating',w:100}),C('type','Content Type','select',{o:'content_type',w:140})];
 const accCols=[C('pfp','Profile Picture','img',{w:110}),C('bio','Bio','text',{w:180}),C('link','Account Link','url',{w:220}),C('status','Account Status Last Update','select',{o:'account_status',w:170}),C('health','Account Health Last Update','select',{o:'health',free:1,w:150}),C('daily_posts','Daily Posts','number',{w:90,sum:1}),C('post_via','Posting via','select',{o:'post_via',w:110}),C('verified','Is Verified','select',{o:'verified',w:110}),C('country','Country','select',{o:'country',w:90}),C('branding','Branding','select',{free:1,w:110}),C('platform','Platforms','select',{o:'platform',w:130}),C('why','Why','long',{w:240}),C('landing','Landing Page','url',{w:210}),C('of_link','OF Tracking Link','url',{w:210}),C('highlight','Highlight Link','url',{w:190}),C('acc_center','Acc Center','text',{w:110}),C('tags','Tags','multi',{w:130}),C('tests','Current tests','multi',{w:140}),C('reach_30d','Reach last 30 days','number',{w:130,sum:1}),C('reach_change','Reach last 30 days % change','pct',{w:120})];
 const projCols=[C('start','Start Date','date',{w:110}),C('due','Due Date','date',{w:110}),C('urgency','Urgency','select',{o:'urgency',w:110}),C('status','Status','select',{o:'project_status',w:190}),C('members','Project Member','multi',{from:()=>peopleNames(),free:1,w:220}),C('owner','Project Owner','select',{from:()=>peopleNames(),free:1,w:170}),C('ptype','Project Type','select',{o:'project_type',w:130}),C('description','Description','long',{w:240})];
 const taskCols=[C('project','Project','text',{w:160}),C('due','Due Date','date',{w:110}),C('description','Description','long',{w:260}),C('assignee','Task Assignee','multi',{from:()=>peopleNames(),free:1,w:200}),C('status','Status','select',{o:'task_status',w:120}),C('priority','Priority','select',{o:'priority',w:100}),C('completed','Completed Date','date',{w:120})];
@@ -517,7 +539,7 @@ const actionsCols=[C('account','Account','multi',{w:230}),C('platform','Platform
 const funnelCols=[C('platform','Platforms','select',{o:'platform',w:130}),C('status','Account Status','select',{o:'account_status',w:160}),C('why','What is Needed','long',{w:220}),C('landing','GAML Landing','url',{w:190}),C('of_link','OF Tracking Link','url',{w:190})];
 const linkpagesCols=[C('platform','Platform','select',{o:'platform',w:120}),C('account_link','Account Link','url',{w:190}),C('page','Page','text',{w:140}),C('format','Format','select',{free:1,w:120}),C('address','Address','text',{w:170}),C('verification','Verification','select',{o:'verification',w:120}),C('cloaking','Cloaking','select',{o:'cloaking',w:110}),C('main_page','Main page of domain','check',{w:120}),C('account_status','Account Status','select',{o:'account_status',w:160})];
 const trackinglinksCols=[C('url','URL','url',{w:240}),C('of_account','OnlyFans account','text',{w:150}),C('status','Status','select',{o:'profile_status',w:110}),C('created_by','Created by','text',{w:140}),C('created_at','Created at','date',{w:120}),C('clicks','Clicks','number',{w:100,sum:1}),C('subs','Subs','number',{w:100,sum:1}),C('revenue','Revenue ($)','number',{w:110,sum:1})];
-const editCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('status','Status','select',{o:'content_status',w:150}),C('type','Content Type','select',{o:'content_type',w:140}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('editor','Editor','select',{free:1,w:150}),C('editing_priority','Editing Priority','select',{o:'priority',w:130}),C('edited_variations_needed','Edited Variations Needed','number',{w:120,sum:1}),C('editing_time','Editing Time','text',{w:120}),C('instructions','Instructions','long',{w:240}),C('reference_link','Reference Link','url',{w:150}),C('raw_drive','Raw Content (Drive Link)','url',{w:180}),C('edited_drive','Edited Content (Drive Link)','url',{w:180}),C('edited_by','Edited By','select',{free:1,w:140}),C('edited_date','Edited Date','date',{w:120}),C('edit_count','Edit Count','number',{w:100,sum:1}),C('due_date','Due Date','date',{w:120})];
+const editCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('status','Status','select',{o:'content_status',w:150}),C('type','Content Type','select',{o:'content_type',w:140}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('editor','Editor','select',{free:1,w:150}),C('editing_priority','Editing Priority','select',{o:'priority',w:130}),C('edited_variations_needed','Edited Variations Needed','number',{w:120,sum:1}),C('editing_time','Editing Time','text',{w:120}),C('instructions','Instructions','long',{w:240}),C('reference_link','Reference Link','url',{w:150}),C('raw_files','Raw Files (Model)','files',{w:180}),C('reject_reason','Motivo de rechazo (para la modelo)','long',{w:240}),C('raw_drive','Raw Content (Drive Link)','url',{w:180}),C('edited_drive','Edited Content (Drive Link)','url',{w:180}),C('edited_by','Edited By','select',{free:1,w:140}),C('edited_date','Edited Date','date',{w:120}),C('edit_count','Edit Count','number',{w:100,sum:1}),C('due_date','Due Date','date',{w:120})];
 const knowledgeCols=[C('category','Category','select',{free:1,w:160}),C('doc_type','Document Type','select',{o:'doc_type',free:1,w:150}),C('link','Document (link)','url',{w:240}),C('body','Notes','long',{w:320}),C('order','Order','number',{w:80})];
 const contentTab=(id,label,dot,types,defSt,group,extra)=>({id,label,dot,view:'list',cfg:{col:'content',noun:'content',primary:'content_id',cols:contentCols,scope:r=>types.includes(r.type),filters:['status','vertical','country','accounts','tags','content_plan'],def:{status:defSt},group:group||['status'],newRow:()=>({type:types[0],status:'To Do'}),...(extra||{})}});
 
@@ -696,15 +718,42 @@ function filesCell(v,max){const L=arr(v).filter(a=>a&&a.path);if(!L.length)retur
 function filesGallery(v){const L=arr(v).filter(a=>a&&a.path);if(!L.length)return h('span',{class:'muted'},'Sin archivos');
   return h('div',{class:'fgal'},L.map(a=>h('div',{class:'fgal-i'},fileThumb(a,true),h('div',{class:'fgal-n'},h('span',{title:a.name},a.name||'archivo'),h('span',{class:'muted'},a.size?fmtSize(a.size):'')))))}
 function removeFiles(list){const ps=arr(list).map(a=>a&&a.path).filter(Boolean);if(ps.length&&S.sb)S.sb.storage.from(FILE_BUCKET).remove(ps).catch(()=>{})}
-async function uploadFile(path,file,onProgress){if(!S.sb)throw new Error('Sin conexión con la base de datos.');
-  const {data}=await S.sb.auth.getSession();const tok=data&&data.session&&data.session.access_token;if(!tok)throw new Error('Tu sesión ha caducado. Vuelve a entrar.');
-  const url=window.SB_URL.replace(/\/+$/,'')+'/storage/v1/object/'+FILE_BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/');
-  return new Promise((ok,ko)=>{const x=new XMLHttpRequest();x.open('POST',url);x.setRequestHeader('Authorization','Bearer '+tok);x.setRequestHeader('apikey',window.SB_KEY);x.setRequestHeader('x-upsert','false');x.setRequestHeader('Content-Type',fileMime(file)||'application/octet-stream');x.setRequestHeader('cache-control','3600');
-    x.upload.onprogress=e=>{if(e.lengthComputable&&onProgress)onProgress(e.loaded/e.total)};
-    x.onload=()=>{if(x.status>=200&&x.status<300)return ok();let m='';try{const j=JSON.parse(x.responseText);m=j.message||j.error||''}catch(e){}
-      ko(new Error(x.status===413||/size|large/i.test(m)?'El archivo pasa del límite de '+fmtSize(FILE_MAX)+'.':/mime|type/i.test(m)?'Solo se pueden subir fotos y vídeos.':'No se pudo subir'+(m?' ('+m+')':'')+'.'))};
-    x.onerror=()=>ko(new Error('Se cortó la conexión. Toca “Reintentar”.'));x.onabort=()=>ko(Object.assign(new Error('cancelado'),{aborted:true}));
-    onProgress&&onProgress(0);x.send(file);onProgress&&(onProgress.xhr=x)})}
+/* Subida: archivos pequeños en una sola petición; desde 6 MB, subida reanudable (protocolo TUS de Supabase):
+   va por trozos de 6 MB, reintenta sola si se corta la conexión y, si se recarga la página, al volver a elegir
+   el mismo archivo continúa desde donde iba. */
+const TUS_CHUNK=6*1024*1024,TUS_WAIT=[1,2,4,8,15,30,30,60];
+const b64u=x=>btoa(unescape(encodeURIComponent(x)));
+async function sbToken(){const {data}=await S.sb.auth.getSession();const t=data&&data.session&&data.session.access_token;if(!t)throw new Error('Tu sesión ha caducado. Vuelve a entrar.');return t}
+function upErr(status,text){let m='';try{const j=JSON.parse(text);m=j.message||j.error||''}catch(e){m=String(text||'').slice(0,120)}
+  return new Error(status===413||/size|large/i.test(m)?'El archivo pasa del límite de '+fmtSize(FILE_MAX)+'.':/mime|type/i.test(m)?'Solo se pueden subir fotos y vídeos.':'No se pudo subir'+(m?' ('+m+')':'')+'.')}
+function xreq(method,url,headers,body,ctl,onUp){return new Promise((ok,ko)=>{if(ctl.aborted)return ko(Object.assign(new Error('cancelado'),{aborted:true}));const x=new XMLHttpRequest();ctl.xhr=x;x.open(method,url);
+  Object.entries(headers).forEach(([k,v])=>x.setRequestHeader(k,v));if(onUp)x.upload.onprogress=e=>{if(e.lengthComputable)onUp(e.loaded)};
+  x.onload=()=>ok({status:x.status,text:x.responseText,h:k=>x.getResponseHeader(k)});x.onerror=()=>ko(Object.assign(new Error('Se cortó la conexión.'),{net:true}));x.onabort=()=>ko(Object.assign(new Error('cancelado'),{aborted:true}));x.send(body==null?null:body)})}
+const sleepNet=(sec,ctl)=>new Promise(r=>{const t=setTimeout(r,sec*1000);const on=()=>{clearTimeout(t);removeEventListener('online',on);r()};if(!navigator.onLine)addEventListener('online',on);ctl.wake=()=>{clearTimeout(t);r()}});
+async function uploadFile(path,file,onProgress){if(!S.sb)throw new Error('Sin conexión con la base de datos.');const ctl={};const prog=p=>{onProgress&&onProgress(p)};
+  if(onProgress)Object.defineProperty(onProgress,'xhr',{configurable:true,get:()=>({abort:()=>{ctl.aborted=true;if(ctl.wake)ctl.wake();if(ctl.xhr)ctl.xhr.abort()}})});
+  const base=window.SB_URL.replace(/\/+$/,'');const mime=fileMime(file)||'application/octet-stream';prog(0);
+  if(file.size<=TUS_CHUNK){const r=await xreq('POST',base+'/storage/v1/object/'+FILE_BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/'),{Authorization:'Bearer '+await sbToken(),apikey:window.SB_KEY,'x-upsert':'false','Content-Type':mime,'cache-control':'3600'},file,ctl,l=>prog(l/file.size));
+    if(r.status>=200&&r.status<300){prog(1);return path}throw upErr(r.status,r.text)}
+  const fp=[FILE_BUCKET,path.split('/').slice(0,2).join('/'),file.name,file.size,file.lastModified].join('|');const mem=ls.get('crm:tus',{});
+  const H=async()=>({Authorization:'Bearer '+await sbToken(),apikey:window.SB_KEY,'Tus-Resumable':'1.0.0'});
+  let url=null,off=0,tries=0;
+  if(mem[fp]&&mem[fp].url){try{const r=await xreq('HEAD',mem[fp].url,await H(),null,ctl);if(r.status===200||r.status===204){url=mem[fp].url;path=mem[fp].path;off=+r.h('Upload-Offset')||0}}catch(e){if(e.aborted)throw e}}
+  if(!url){const r=await xreq('POST',base+'/storage/v1/upload/resumable',{...await H(),'Upload-Length':String(file.size),'x-upsert':'false',
+      'Upload-Metadata':['bucketName '+b64u(FILE_BUCKET),'objectName '+b64u(path),'contentType '+b64u(mime),'cacheControl '+b64u('3600')].join(',')},null,ctl);
+    if(r.status!==201)throw upErr(r.status,r.text);url=r.h('Location');if(!url)throw new Error('El servidor no devolvió la dirección de subida.');if(!/^https?:/.test(url))url=new URL(url,base).href;
+    const m2=ls.get('crm:tus',{});m2[fp]={url,path,t:Date.now()};Object.keys(m2).forEach(k=>{if(Date.now()-(m2[k].t||0)>864e5)delete m2[k]});ls.set('crm:tus',m2)}
+  prog(off/file.size);
+  while(off<file.size){const chunk=file.slice(off,off+TUS_CHUNK);
+    try{const r=await xreq('PATCH',url,{...await H(),'Upload-Offset':String(off),'Content-Type':'application/offset+octet-stream'},chunk,ctl,l=>prog((off+l)/file.size));
+      if(r.status===204||r.status===200){off=+r.h('Upload-Offset')||off+chunk.size;tries=0;prog(off/file.size);continue}
+      if(r.status===409||r.status===412){const hd=await xreq('HEAD',url,await H(),null,ctl);off=+hd.h('Upload-Offset')||off;continue}
+      if(r.status>=500||r.status===423||r.status===429)throw Object.assign(new Error('El servidor está ocupado.'),{net:true});
+      throw upErr(r.status,r.text)}
+    catch(e){if(e.aborted||!e.net||tries>=TUS_WAIT.length){if(!e.aborted&&e.net)e.message='Se cortó la conexión. Toca “Reintentar”: seguirá desde donde iba.';throw e}
+      await sleepNet(TUS_WAIT[tries++],ctl);if(ctl.aborted)throw Object.assign(new Error('cancelado'),{aborted:true});
+      try{const hd=await xreq('HEAD',url,await H(),null,ctl);if(hd.status===200||hd.status===204)off=+hd.h('Upload-Offset')||off}catch(e2){if(e2.aborted)throw e2}}}
+  const m3=ls.get('crm:tus',{});delete m3[fp];ls.set('crm:tus',m3);prog(1);return path}
 async function downloadFile(a){if(!S.sb)return;const {data,error}=await S.sb.storage.from(FILE_BUCKET).createSignedUrl(a.path,600,{download:a.name||true});if(error||!data||!data.signedUrl)return toast('No se pudo descargar'+(error?': '+error.message:''));
   const l=h('a',{href:data.signedUrl,download:a.name||'',style:'display:none'});document.body.append(l);l.click();setTimeout(()=>l.remove(),0)}
 const FED_LIVE=new Set();
@@ -716,13 +765,15 @@ function filesEditor(colName,id,k){const el=h('div',{class:'fed'});const F={menu
     add.forEach(file=>{const mt=fileMime(file);const u={file,p:0,st:'up'};F.ups.push(u);
       if(!/^(image|video)\//.test(mt)){u.st='err';u.err='Solo fotos o vídeos.';return}if(file.size>FILE_MAX){u.st='err';u.err='Pesa '+fmtSize(file.size)+', el máximo es '+fmtSize(FILE_MAX)+'.';return}
       const path=owner+'/'+id+'/'+uid()+'-'+file.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
-      uploadFile(path,file,p=>{u.p=p;if(u.bar)u.bar.style.width=Math.round(p*100)+'%'}).then(()=>{F.ups=F.ups.filter(x=>x!==u);save([...list(),{path,name:file.name,size:file.size,type:mt}]);draw()}).catch(er=>{u.st='err';u.err=er.message;draw()})});draw()}});
+      uploadFile(path,file,p=>{u.p=p;if(u.bar)u.bar.style.width=Math.round(p*100)+'%'}).then(path=>{F.ups=F.ups.filter(x=>x!==u);save([...list(),{path,name:file.name,size:file.size,type:mt}]);draw()}).catch(er=>{u.st='err';u.err=er.message;draw()})});draw()}});
   const item=a=>{const conf=F.conf===a.path,ren=F.ren===a.path,menu=F.menu===a.path;
     const nm=ren?h('input',{class:'fed-ren',value:a.name||'','aria-label':'Nuevo nombre de '+a.name,onkeydown:e=>{if(e.key==='Enter'){e.preventDefault();rename(a,e.target.value)}if(e.key==='Escape'){e.preventDefault();e.stopPropagation();F.ren=null;draw()}},onblur:e=>{if(F.ren===a.path)rename(a,e.target.value)}}):h('div',{class:'fed-n',title:a.name},a.name||'archivo');
-    return h('div',{class:'fed-i'},fileThumb(a,true),
+    return h('div',{class:'fed-i'+(a.redo?' redo':'')},fileThumb(a,true),
       h('button',{type:'button',class:'fed-dots','aria-label':'Opciones de '+(a.name||'archivo'),'aria-haspopup':'menu','aria-expanded':String(menu),onclick:()=>{F.menu=menu?null:a.path;F.conf=null;draw();if(!menu){const b=el.querySelector('.fed-menu button');b&&b.focus()}}},'⋯'),
       h('button',{type:'button',class:'fed-x','aria-label':'Quitar '+(a.name||'archivo'),onclick:()=>{F.conf=a.path;F.menu=null;draw();const b=el.querySelector('.fed-conf button');b&&b.focus()}},'×'),
-      menu?h('div',{class:'fed-menu',role:'menu'},h('button',{type:'button',role:'menuitem',onclick:()=>{F.menu=null;draw();downloadFile(a)}},'⬇ Descargar'),h('button',{type:'button',role:'menuitem',onclick:()=>{F.menu=null;F.ren=a.path;draw();const i=el.querySelector('.fed-ren');if(i){i.focus();const d=i.value.lastIndexOf('.');i.setSelectionRange(0,d>0?d:i.value.length)}}},'✏️ Renombrar'),h('button',{type:'button',role:'menuitem',class:'danger',onclick:()=>{F.menu=null;F.conf=a.path;draw()}},'✕ Quitar')):null,
+      menu?h('div',{class:'fed-menu',role:'menu'},h('button',{type:'button',role:'menuitem',onclick:()=>{F.menu=null;draw();downloadFile(a)}},'⬇ Descargar'),colName==='content'&&k==='raw_files'?h('button',{type:'button',role:'menuitem',onclick:()=>{F.menu=null;if(a.redo){save(list().map(x=>x.path===a.path?(({redo,redo_note,...y})=>y)(x):x));draw()}else{F.redoEd=a.path;draw();const i=el.querySelector('.fed-redo input');i&&i.focus()}}},a.redo?'↺ Quitar marca de repetir':'↻ Marcar para repetir'):null,h('button',{type:'button',role:'menuitem',onclick:()=>{F.menu=null;F.ren=a.path;draw();const i=el.querySelector('.fed-ren');if(i){i.focus();const d=i.value.lastIndexOf('.');i.setSelectionRange(0,d>0?d:i.value.length)}}},'✏️ Renombrar'),h('button',{type:'button',role:'menuitem',class:'danger',onclick:()=>{F.menu=null;F.conf=a.path;draw()}},'✕ Quitar')):null,
+      F.redoEd===a.path?h('div',{class:'fed-redo'},h('input',{placeholder:'Qué tiene que repetir (opcional)','aria-label':'Motivo para repetir '+(a.name||'archivo'),onkeydown:e=>{if(e.key==='Enter'){e.preventDefault();const v=e.target.value.trim();F.redoEd=null;save(list().map(x=>x.path===a.path?{...x,redo:true,redo_note:v||null}:x));draw()}if(e.key==='Escape'){e.preventDefault();e.stopPropagation();F.redoEd=null;draw()}}}),h('div',{class:'muted',style:'font-size:11px'},'Enter para marcar · Esc para cancelar')):null,
+      a.redo?h('div',{class:'fed-redotag',title:a.redo_note||''},'↻ Repetir'+(a.redo_note?': '+a.redo_note:'')):null,
       conf?h('div',{class:'fed-conf',role:'alertdialog','aria-label':'Quitar '+(a.name||'archivo')},h('span',null,'¿Quitar este archivo?'),h('button',{type:'button',class:'btn-danger',onclick:()=>remove(a)},'Quitar'),h('button',{type:'button',onclick:()=>{F.conf=null;draw()}},'No')):null,nm)};
   const upItem=u=>{const bar=h('i',{style:'width:'+Math.round(u.p*100)+'%'});u.bar=bar;return h('div',{class:'fed-i fed-up'+(u.st==='err'?' err':'')},h('div',{class:'fthumb big'},h('span',{class:'fph','aria-hidden':'true'},isVideo({type:fileMime(u.file),name:u.file.name})?'🎞':'🖼')),
     u.st==='err'?h('button',{type:'button',class:'fed-x','aria-label':'Descartar '+u.file.name,onclick:()=>{F.ups=F.ups.filter(x=>x!==u);draw()}},'×'):null,
@@ -789,7 +840,7 @@ function pickPop(anchor,col,cfg,current,multi,onChange){const cur=new Set(curren
     box.replaceChildren(...(multi?[]:[h('div',{class:'opt muted',onclick:()=>{onChange([]);closePop()}},'— clear')]),...list.map(o=>multi?h('label',null,h('input',{type:'checkbox',checked:cur.has(o),onchange:e=>{e.target.checked?cur.add(o):cur.delete(o);onChange([...cur]);info()}}),view(o)):h('div',{class:'opt',onclick:()=>{onChange([o]);closePop()}},view(o))),list.length?'':h('div',{class:'opt muted'},'Sin opciones'))};
   q.addEventListener('input',draw);draw();
   const add=((col.free||multi)&&!col.acc)?h('div',{class:'row'},h('input',{placeholder:'Nueva opción…','aria-label':'Nueva opción',onkeydown:e=>{if(e.key==='Enter'){e.preventDefault();const v=e.target.value.trim();if(!v)return;if(multi){cur.add(v);if(!opts.includes(v))opts.push(v);onChange([...cur]);e.target.value='';draw()}else{onChange([v]);closePop()}}}})):null;
-  pop(anchor,[col.acc?h('div',{class:'muted',style:'padding:4px 8px;font-size:12px'},'Cuentas de '+((model()||{}).name||'la modelo')):null,opts.length>6?q:null,infoEl,box,add]);if(col.acc||opts.length>12)popEl.classList.add('wide');if(opts.length>6)q.focus()}
+  pop(anchor,[col.acc?h('div',{class:'muted',style:'padding:4px 8px;font-size:12px'},'Cuentas de '+((model()||{}).name||'la modelo')):null,opts.length>6?q:null,infoEl,box,add]);if(multi)popEl.dataset.keep='1';if(col.acc||opts.length>12)popEl.classList.add('wide');if(opts.length>6)q.focus()}
 function editCell(td,col,row,cfg){
   if(col.t==='check'||col.ro)return;
   if(col.t==='files')return filesPop(td,col,S.d[cfg.col].get(row.id)||row,cfg);
@@ -1420,15 +1471,58 @@ function boardView(tab,root){const list=rows('tasks').filter(tab.f);root.append(
   root.append(h('div',{class:'board'},sts.map(s=>{const g=list.filter(r=>(r.status||'To-Do')===s).sort((a,b)=>String(a.due||'9').localeCompare(String(b.due||'9')));return h('div',{class:'bcol'},h('h3',null,chip(s,'task_status'),h('span',{class:'muted'},g.length)),g.map(r=>h('div',{class:'card',style:'border-left-color:'+(O.priority[r.priority]||'var(--accent)'),tabindex:'0',onclick:()=>recordModal(taskCfg,r,false),onkeydown:e=>{if(e.key==='Enter')recordModal(taskCfg,r,false)}},h('b',null,r.name),h('small',null,[r.project,r.due,r.assignee].filter(Boolean).join(' · ')))),g.length?null:h('div',{class:'empty',style:'padding:14px 12px'},'Nothing here.'))})),h('div',{class:'foot'},h('b',null,list.length+' tasks')))}
 
 /* ---------- model app (Content Hub) ---------- */
-const ma={screen:'home',plat:null,tab:'past',f:{},id:null,extra:null,reset:false};
-const PENDING=['Instructions Added'];
+const ma={screen:'home',plat:null,tab:'past',f:{},id:null,extra:null,reset:false,open:new Set(),up:{},scrolls:{}};
+const PENDING=['Instructions Added','Not Approved'];
 const PLATS=[{id:'ig',label:'Instagram',icon:'📸',color:'#8b46ff',test:r=>['Short Form','Stories'].includes(r.type)},{id:'yt',label:'YouTube',icon:'▶️',color:'#e5484d',test:r=>['Youtube','Youtube Long Form'].includes(r.type)},{id:'of',label:'OnlyFans',icon:'💎',color:'#2d7ff9',test:r=>OF_TYPES.includes(r.type)},{id:'tt',label:'TikTok',icon:'🎵',color:'#20b8b1',test:r=>r.type==='Tiktok'},{id:'tw',label:'Twitter',icon:'🐦',color:'#4aa8d8',test:r=>r.type==='Twitter'},{id:'p1',label:'Prioridad 1',icon:'⚡',color:'#ff6f2c',test:r=>[...arr(r.tags),...arr(r.model_tags)].some(t=>/prioridad\s*1/i.test(String(t)))}];
 const PROP_ICON={'IG Reels or Carrusell':'🎬','OF':'💎','IG Stories':'📱','Youtube Long Form':'📺','Drive':'📁'};
 const todayIso=()=>iso(new Date());
 const daysLate=d=>Math.round((new Date(todayIso()+'T12:00')-new Date(d+'T12:00'))/864e5);
-const maNav=o=>{Object.assign(ma,o,{reset:true});rerender()};
+const maKey=()=>ma.screen==='list'?'list:'+ma.plat+':'+ma.tab:ma.screen;
+const maNav=o=>{const V=$('#view');ma.scrolls=ma.scrolls||{};if(V)ma.scrolls[maKey()]=V.scrollTop;const from=ma.screen;Object.assign(ma,o,{reset:true});ma.restoreY=from==='detail'&&ma.screen==='list'?(ma.scrolls[maKey()]||0):0;rerender()};
 function linkify(t){const out=[];const re=/https?:\/\/[^\s<>"]+/g;let i=0,m;t=String(t);while((m=re.exec(t))){out.push(t.slice(i,m.index));out.push(h('a',{href:m[0],target:'_blank',rel:'noopener'},m[0]));i=m.index+m[0].length}out.push(t.slice(i));return out}
-function markDone(r){openModal(h('div',{class:'dlg',style:'width:min(420px,100%)'},h('h2',null,'¿Marcar como grabado?'),h('p',{class:'muted'},'La pieza pasará a "Recorded" y saldrá de tu lista de pendientes.'),h('div',{class:'acts'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'button',class:'btn-acc',onclick:()=>{closeModal();if(S.role==='model'){S.sb.rpc('mark_done',{p_id:String(r.id)}).then(({error})=>{if(error)toast('No se pudo marcar: '+error.message);else{S.d.content.set(r.id,{...r,status:'Recorded',recorded_date:todayIso()});rerender()}})}else patch('content',r.id,{status:'Recorded',recorded_date:todayIso()});maNav({screen:'list'});toast('Marcado como hecho')}},'Sí, hecho'))))}
+
+let rawQ=Promise.resolve();
+function setRawFiles(id,mut){rawQ=rawQ.then(async()=>{const cur=S.d.content.get(id);if(!cur)return;const L=mut(arr(cur.raw_files).filter(a=>a&&a.path));
+    if(S.role==='model'){const {error}=await S.sb.rpc('set_content_files',{p_id:String(id),p_files:L});if(error)throw error;S.d.content.set(id,{...S.d.content.get(id),raw_files:L});rerender()}
+    else await patch('content',id,{raw_files:L.length?L:null})}).catch(e=>toast('No se pudo guardar: '+((e&&e.message)||e)));return rawQ}
+const plural=(n,a,b)=>n+' '+(n===1?a:b);
+function rawState(r){const L=arr(r.raw_files).filter(a=>a&&a.path);const q=reqOf(r);const n=L.length;const U=ma.up[r.id]||[];const redo=L.filter(a=>a.redo).length;
+  return {L,q,n,redo,need:q.files,busy:U.some(u=>u.st==='up'),diff:n-q.files,ok:n===q.files&&!redo,
+    msg:redo?'Tienes '+plural(redo,'archivo marcado','archivos marcados')+' para repetir: quíta'+(redo===1?'lo':'los')+' con × y sube '+(redo===1?'uno nuevo':'los nuevos')+'.':n<q.files?'Te '+(q.files-n===1?'falta ':'faltan ')+plural(q.files-n,'archivo','archivos')+' por subir.':n>q.files?'Te '+(n-q.files===1?'sobra ':'sobran ')+plural(n-q.files,'archivo','archivos')+': esta pieza pide '+plural(q.files,'archivo','archivos')+'. Quita '+(n-q.files===1?'el que sobra':'los que sobran')+'.':'✓ Has subido todo lo que pide esta pieza.'}}
+function refEmbed(u){try{const x=new URL(u);const host=x.hostname.replace(/^www\.|^m\./,'');const p=x.pathname;let m;
+  if(/(^|\.)instagram\.com$/.test(host)&&(m=p.match(/\/(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/)))return {src:'https://www.instagram.com/'+(m[1]==='p'?'p':'reel')+'/'+m[2]+'/embed/',app:'Instagram'};
+  if(/(^|\.)tiktok\.com$/.test(host)&&(m=p.match(/\/video\/(\d+)/)))return {src:'https://www.tiktok.com/embed/v2/'+m[1],app:'TikTok'};
+  if(/(^|\.)youtube\.com$/.test(host)){const id=x.searchParams.get('v')||((m=p.match(/\/(shorts|embed|live)\/([A-Za-z0-9_-]{6,})/))&&m[2]);if(id)return {src:'https://www.youtube.com/embed/'+id,app:'YouTube'}}
+  if(host==='youtu.be'&&(m=p.match(/^\/([A-Za-z0-9_-]{6,})/)))return {src:'https://www.youtube.com/embed/'+m[1],app:'YouTube'};
+  }catch(e){}return null}
+function refBox(r,compact){const u=r.reference_link;if(!u)return null;const E=refEmbed(u);ma.ref=ma.ref||new Set();const open=E&&ma.ref.has(r.id);const host=(()=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return ''}})();
+  const ext=h('a',{class:'ma-btn ghost',href:u,target:'_blank',rel:'noopener'},E?'Abrir en '+E.app+' ↗':'Abrir referencia ↗');
+  return h('div',{class:compact?'ma-refc':'ma-box'},h('div',{class:'ma-k'},'Video de referencia'),
+    E?h('div',{class:'ma-refacts'},h('button',{type:'button',class:'ma-btn','aria-expanded':String(!!open),onclick:()=>{open?ma.ref.delete(r.id):ma.ref.add(r.id);rerender()}},open?'Ocultar vídeo':'▶ Ver aquí'),ext):ext,
+    open?h('div',{class:'ma-refwrap'},h('iframe',{src:E.src,title:'Vídeo de referencia',loading:'lazy',allow:'autoplay; encrypted-media; picture-in-picture; fullscreen',allowfullscreen:true,referrerpolicy:'strict-origin-when-cross-origin'})):null,
+    open?h('div',{class:'ma-fsub',style:'margin-top:6px'},'Si no carga, usa “Abrir en '+E.app+'”.'):(!E&&host?h('div',{class:'ma-fsub',style:'margin-top:6px'},'Este link ('+host+') solo se puede abrir fuera de la app.'):null))}
+function maUploadBox(r,m){const pending=PENDING.includes(r.status);const R=rawState(r);const U=(ma.up[r.id]=ma.up[r.id]||[]);const box=h('div',{class:'ma-box ma-upbox'});
+  const start=u=>{u.st='up';u.p=0;u.err=null;const path=m.id+'/'+r.id+'/'+uid()+'-'+u.file.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+    const prog=p=>{u.p=p;if(u.bar)u.bar.style.width=Math.round(p*100)+'%';if(u.pct)u.pct.textContent=Math.round(p*100)+'%'};u.xhr=()=>prog.xhr;
+    uploadFile(path,u.file,prog).then(path=>setRawFiles(r.id,L=>L.some(x=>x.path===path)?L:[...L,{path,name:u.file.name,size:u.file.size,type:fileMime(u.file)}])).then(()=>{ma.up[r.id]=(ma.up[r.id]||[]).filter(x=>x!==u);rerender()}).catch(e=>{if(e&&e.aborted)return;u.st='err';u.err=e.message||String(e);rerender()})};
+  const fin=h('input',{type:'file',multiple:true,accept:'image/*,video/*',class:'sr-file',id:'raw_'+r.id,onchange:e=>{const add=[...e.target.files];e.target.value='';
+    add.forEach(file=>{const u={file,p:0,st:'err'};U.push(u);if(!/^(image|video)\//.test(fileMime(file))){u.err='Solo fotos o vídeos.';return}if(file.size>FILE_MAX){u.err='Pesa '+fmtSize(file.size)+', el máximo es '+fmtSize(FILE_MAX)+'.';return}start(u)});rerender()}});
+  const q=R.q;const how=q.files===1?'Sube 1 archivo.':'Sube '+q.files+' archivos'+(q.reps>1?' — graba el vídeo '+q.reps+' veces, una para cada cuenta'+(q.per>1?' ('+q.per+' archivos cada vez)':'')+'.':'.');
+  box.append(h('div',{class:'ma-uphead'},h('div',{class:'ma-k',style:'margin:0'},'Subir contenido'),h('span',{class:'ma-count '+(R.ok?'ok':R.diff>0||R.redo?'over':'')},R.n+' / '+R.need)),
+    h('div',{style:'font-size:13px;color:var(--ma-sub);margin-top:4px'},how),
+    h('ul',{class:'ma-files'},R.L.map(a=>{const conf=ma.rmConf===a.path;return h('li',{class:'ma-file'+(a.redo?' err':'')},fileThumb(a),h('div',{class:'ma-fmain'},h('div',{class:'ma-fname'},a.name||'archivo'),a.redo?h('div',{class:'ma-ferr',style:'font-size:12px;font-weight:600'},'↻ Repetir'+(a.redo_note?': '+a.redo_note:'')):h('div',{class:'ma-fsub'},a.size?fmtSize(a.size):'')),
+        pending?(conf?h('span',{style:'display:flex;gap:6px'},h('button',{type:'button',class:'ma-fretry',style:'background:#fdecec;color:#b3261e',onclick:()=>{ma.rmConf=null;setRawFiles(r.id,L=>L.filter(x=>x.path!==a.path)).then(()=>removeFiles([a]))}},'Quitar'),h('button',{type:'button',class:'ma-fretry',onclick:()=>{ma.rmConf=null;rerender()}},'No')):h('button',{type:'button',class:'ma-frm','aria-label':'Quitar '+(a.name||'archivo'),onclick:()=>{ma.rmConf=a.path;rerender()}},'×')):h('span',{class:'ma-fpct'},'✓'))}),
+      U.map(u=>{const bar=h('i',{style:'width:'+Math.round((u.p||0)*100)+'%'});u.bar=bar;const pct=h('span',{class:'ma-fpct'},u.st==='up'?Math.round((u.p||0)*100)+'%':'');u.pct=u.st==='up'?pct:null;
+        return h('li',{class:'ma-file'+(u.st==='err'?' err':'')},h('span',{class:'ma-fico','aria-hidden':'true'},isVideo({type:fileMime(u.file),name:u.file.name})?'🎞':'🖼'),h('div',{class:'ma-fmain'},h('div',{class:'ma-fname'},u.file.name),h('div',{class:'ma-fsub'},fmtSize(u.file.size),u.st==='err'?h('span',{class:'ma-ferr'},' · '+u.err):' · subiendo…'),u.st==='up'?h('div',{class:'ma-fbar',role:'progressbar','aria-label':'Subiendo '+u.file.name},bar):null),
+          u.st==='err'&&u.file.size<=FILE_MAX&&/^(image|video)\//.test(fileMime(u.file))?h('button',{type:'button',class:'ma-fretry',onclick:()=>{start(u);rerender()}},'Reintentar'):pct,
+          h('button',{type:'button',class:'ma-frm','aria-label':(u.st==='up'?'Cancelar ':'Descartar ')+u.file.name,onclick:()=>{const x=u.xhr&&u.xhr();if(u.st==='up'&&x)try{x.abort()}catch(e){}ma.up[r.id]=(ma.up[r.id]||[]).filter(y=>y!==u);rerender()}},'×'))})),
+    h('div',{class:'ma-upmsg '+(R.ok?'ok':R.diff>0||R.redo?'over':'miss'),role:'status'},R.busy?'Subiendo… no cierres esta pantalla hasta que termine.':R.msg),
+    pending?h('label',{class:'ma-attach',for:fin.id},fin,h('span',{'aria-hidden':'true',style:'font-size:20px'},'📎'),h('span',null,h('b',null,'Adjuntar archivos'),h('span',{class:'ma-fsub',style:'display:block'},'Fotos o vídeos · hasta '+fmtSize(FILE_MAX)+' cada uno'))):null);
+  return box}
+function tryDone(r){const R=rawState(r);if(R.busy)return toast('Espera a que terminen de subirse los archivos');
+  if(!R.ok)return openModal(h('div',{class:'dlg',style:'width:min(420px,100%)'},h('h2',null,R.redo?'Archivos para repetir':R.diff<0?'Faltan archivos':'Sobran archivos'),h('p',{class:'muted'},R.msg),R.redo?null:h('p',{class:'muted'},'Has subido '+R.n+' de '+R.need+'. Solo puedes marcarla como hecha cuando el número sea exacto.'),h('div',{class:'acts'},h('button',{type:'button',class:'btn-acc',onclick:closeModal},'Entendido'))));
+  markDone(r)}
+function markDone(r){openModal(h('div',{class:'dlg',style:'width:min(420px,100%)'},h('h2',null,'¿Marcar como grabado?'),h('p',{class:'muted'},'La pieza pasará a "Recorded" y saldrá de tu lista de pendientes.'),h('div',{class:'acts'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'button',class:'btn-acc',onclick:()=>{closeModal();if(S.role==='model'){S.sb.rpc('mark_done',{p_id:String(r.id)}).then(({error})=>{if(error){toast(error.message);maNav({screen:'detail',id:r.id});return}else{S.d.content.set(r.id,{...r,status:'Recorded',recorded_date:todayIso()});rerender()}})}else patch('content',r.id,{status:'Recorded',recorded_date:todayIso()});maNav({screen:'list'});toast('Marcado como hecho')}},'Sí, hecho'))))}
 function modelApp(v){
   const root=h('div',{class:'ma'});v.append(root);const m=model();
   if(!S.loaded){root.append(h('div',{class:'ma-empty'},'Cargando…'));return}
@@ -1447,7 +1541,7 @@ function modelApp(v){
     w.append(h('div',{class:'ma-h'},'Por plataforma'));
     const g=h('div',{class:'ma-grid'});
     PLATS.forEach(p=>{const list=pend.filter(p.test);if(!list.length&&!['ig','yt','of','p1'].includes(p.id))return;const L=list.filter(late).length,F=list.filter(fut).length;
-      g.append(h('button',{type:'button',class:'ma-card',style:'--c:'+p.color,onclick:()=>maNav({screen:'list',plat:p.id,tab:'past',f:{}})},h('div',{class:'ma-badges'},L?h('span',{class:'ma-badge'},L+' atrasados'):null,F?h('span',{class:'ma-badge f'},F+' futuros'):null),h('div',{class:'ma-ico'},p.icon),h('div',{class:'t'},p.label),h('div',{class:'n'},list.length),h('div',{class:'s'},list.length+' pendientes')))});
+      const NA=list.filter(r=>r.status==='Not Approved').length;g.append(h('button',{type:'button',class:'ma-card',style:'--c:'+p.color,onclick:()=>maNav({screen:'list',plat:p.id,tab:'past',f:{}})},h('div',{class:'ma-badges'},NA?h('span',{class:'ma-badge'},NA+' a corregir'):null,L?h('span',{class:'ma-badge'},L+' atrasados'):null,F?h('span',{class:'ma-badge f'},F+' futuros'):null),h('div',{class:'ma-ico'},p.icon),h('div',{class:'t'},p.label),h('div',{class:'n'},list.length),h('div',{class:'s'},list.length+' pendientes')))});
     w.append(g);
     if(!pend.length)w.append(h('p',{class:'ma-note'},'Sin contenido pendiente. Aparece aquí cuando en el CRM una pieza pasa a "Instructions Added".'));
     w.append(h('div',{class:'ma-h'},'Tutoriales'),h('button',{type:'button',class:'ma-row',onclick:()=>maNav({screen:'tutorials'})},'🎓  Tutoriales',h('span',{class:'ar'},'›')),
@@ -1457,27 +1551,36 @@ function modelApp(v){
     const p=PLATS.find(x=>x.id===ma.plat)||PLATS[0];const all=pend.filter(p.test);
     root.append(top(back(()=>maNav({screen:'home'})),p.label+' ('+all.length+')'),hero(stats),w);
     w.append(h('div',{class:'ma-seg'},[['past','Pasado/Hoy'],['future','Futuro']].map(([k,l])=>h('button',{type:'button',class:ma.tab===k?'on':'',onclick:()=>{ma.tab=k;ma.f={};rerender()}},l))));
-    const base=all.filter(r=>ma.tab==='future'?fut(r):!fut(r));
+    const base=all.filter(r=>r.status==='Not Approved'?ma.tab!=='future':ma.tab==='future'?fut(r):!fut(r));
     const F=[['type','Tipo',r=>[r.type]],['vertical','Vertical',r=>[r.vertical]],['country','País',r=>[r.country]],['tag','Tag',tagsOf]];
     w.append(h('div',{class:'ma-filters'},F.map(([k,l,get])=>{const vals=[...new Set(base.flatMap(get).filter(Boolean))].sort();return h('select',{'aria-label':l,onchange:e=>{ma.f[k]=e.target.value;rerender()}},h('option',{value:''},l),vals.map(x=>h('option',{value:x,selected:ma.f[k]===x},x)))})));
-    const list=base.filter(r=>F.every(([k,,get])=>!ma.f[k]||get(r).includes(ma.f[k]))).sort((a,b)=>String(a.due_date||'9').localeCompare(String(b.due_date||'9')));
+    const list=base.filter(r=>F.every(([k,,get])=>!ma.f[k]||get(r).includes(ma.f[k]))).sort((a,b)=>(b.status==='Not Approved')-(a.status==='Not Approved')||String(a.due_date||'9').localeCompare(String(b.due_date||'9')));
     if(!list.length)w.append(h('div',{class:'ma-empty'},ma.tab==='future'?'Nada programado para más adelante.':'Nada pendiente por aquí.'));
-    list.forEach(r=>{const d=r.due_date;const badge=!d?null:d<T?h('span',{class:'ma-badge late'},daysLate(d)+'d atrasado'):d===T?h('span',{class:'ma-badge f late'},'Hoy'):h('span',{class:'ma-badge f late'},'En '+(-daysLate(d))+'d');
-      w.append(h('button',{type:'button',class:'ma-item',style:'--c:'+(late(r)?'#e5484d':p.color),onclick:()=>maNav({screen:'detail',id:r.id})},h('div',{class:'top'},h('div',{class:'ma-ico',style:'--c:'+p.color+';width:32px;height:32px;font-size:15px'},p.icon),h('div',{style:'min-width:0'},h('b',null,(PLATS.find(x=>x.id!=='p1'&&x.test(r))||p).label),h('div',{class:'id'},r.content_id)),badge),h('div',{class:'ma-pills'},r.vertical?h('span',{class:'ma-pill v'},r.vertical):null,r.country?h('span',{class:'ma-pill c'},r.country):null,tagsOf(r).map(t=>h('span',{class:'ma-pill t'},t)))))});
+    list.forEach(r=>{const d=r.due_date;const badge=r.status==='Not Approved'?h('span',{class:'ma-badge late'},'↻ Corregir'):!d?null:d<T?h('span',{class:'ma-badge late'},daysLate(d)+'d atrasado'):d===T?h('span',{class:'ma-badge f late'},'Hoy'):h('span',{class:'ma-badge f late'},'En '+(-daysLate(d))+'d');
+      const open=ma.open.has(r.id);const R=rawState(r);const q=R.q;
+      w.append(h('div',{class:'ma-item'+(open?' open':''),style:'--c:'+(late(r)?'#e5484d':p.color)},
+        h('button',{type:'button',class:'ma-tog','aria-expanded':String(open),'aria-controls':'mx-'+r.id,'aria-label':(open?'Ocultar':'Ver')+' detalles de '+(r.content_id||'esta pieza'),onclick:()=>{open?ma.open.delete(r.id):ma.open.add(r.id);rerender()}},h('span',{'aria-hidden':'true'},'›')),
+        h('button',{type:'button',class:'ma-item-main',onclick:()=>maNav({screen:'detail',id:r.id})},h('div',{class:'top'},h('div',{class:'ma-ico',style:'--c:'+p.color+';width:32px;height:32px;font-size:15px'},p.icon),h('div',{style:'min-width:0'},h('b',null,(PLATS.find(x=>x.id!=='p1'&&x.test(r))||p).label),h('div',{class:'id'},r.content_id)),badge),h('div',{class:'ma-pills'},r.vertical?h('span',{class:'ma-pill v'},r.vertical):null,r.country?h('span',{class:'ma-pill c'},r.country):null,tagsOf(r).map(t=>h('span',{class:'ma-pill t'},t)))),
+        open?h('div',{class:'ma-more',id:'mx-'+r.id},
+          r.status==='Not Approved'?h('div',{class:'ma-reject ma-refc'},h('div',{class:'ma-k',style:'color:#b3261e'},'↻ Para corregir'),r.reject_reason?richNode(r.reject_reason,'ma-instr'):h('div',null,'Revisa los archivos marcados para repetir.')):null,
+          h('div',{class:'ma-k'},'📄 Instrucciones'),richNode(r.instructions||'Sin instrucciones todavía.','ma-instr'),
+          h('div',{class:'ma-minfo'},[['Archivos a subir',q.files],['Repeticiones',q.reps],['Subidos',R.n+' / '+R.need],['Due date',r.due_date||'—']].map(([k,v])=>h('div',null,h('div',{class:'ma-k'},k),h('b',null,String(v))))),
+          h('div',{class:'ma-upmsg '+(R.ok?'ok':R.diff>0||R.redo?'over':'miss')},R.msg),
+          refBox(r,true),h('div',{class:'ma-more-acts one'},h('button',{type:'button',class:'ma-btn',onclick:()=>maNav({screen:'detail',id:r.id})},'Abrir y subir archivos'))):null))});
   }else if(ma.screen==='detail'){
     const r=S.d.content.get(ma.id);if(!r){ma.screen='list';root.append(h('div',{class:'ma-empty'},'Esta pieza ya no existe.'));return}
     const p=PLATS.find(x=>x.id!=='p1'&&x.test(r))||{label:r.type||'Contenido',icon:'🎬',color:'#8b46ff'};const d=r.due_date;
-    root.append(top(back(()=>maNav({screen:'list'})),PENDING.includes(r.status)?h('button',{type:'button',class:'done',onclick:()=>markDone(r)},'Hecho'):h('span',{class:'chip g'},r.status||''),h('button',{type:'button',onclick:()=>maNav({screen:'home'})},'⌂ Inicio')));
+    root.append(top(back(()=>maNav({screen:'list'})),PENDING.includes(r.status)?h('button',{type:'button',class:'done',onclick:()=>tryDone(r)},'Hecho'):h('span',{class:'chip g'},r.status||''),h('button',{type:'button',onclick:()=>maNav({screen:'home'})},'⌂ Inicio')));
     root.append(h('div',{class:'ma-hero'},h('div',{class:'ma-wrap'},h('div',{class:'ma-id'},h('span',{class:'ma-ico',style:'--c:#ffffffcc'},p.icon),h('div',{style:'min-width:0'},h('div',{class:'ma-eyebrow'},p.label),h('div',{class:'ma-name',style:'font-size:18px'},r.content_id))))),w);
     const longD=d?new Date(d+'T12:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'}):'';
     w.append(h('div',{class:'ma-box'+(late(r)?' red':'')},h('div',{class:'ma-k'},'Fecha'),h('b',{style:late(r)?'color:var(--ma-red)':''},!d?'Sin fecha':d<T?'🔴 '+daysLate(d)+'d atrasado':d===T?'Hoy':'En '+(-daysLate(d))+' días'),longD?h('div',{style:'font-size:12px;color:var(--ma-sub)'},longD):null));
     const kv=(k,val)=>h('div',null,h('div',{class:'ma-k'},k),h('div',null,val==null||val===''?'—':String(val)));
     w.append(h('div',{class:'ma-box'},h('div',{class:'ma-info'},kv('Content ID',r.content_id),kv('Tipo',p.label),kv('País',r.country),kv('Vertical',r.vertical)),tagsOf(r).length?h('div',{style:'margin-top:12px'},h('div',{class:'ma-k'},'Tags'),h('div',{class:'ma-pills'},tagsOf(r).map(t=>h('span',{class:'ma-pill t'},t)))):null));
+    if(r.status==='Not Approved')w.append(h('div',{class:'ma-box ma-reject',role:'note'},h('div',{class:'ma-k',style:'color:#b3261e'},'↻ Tu agencia pide corregir esta pieza'),r.reject_reason?richNode(r.reject_reason,'ma-instr'):h('div',{class:'ma-instr'},'Revisa los archivos marcados para repetir.'),h('div',{class:'ma-fsub',style:'margin-top:6px'},'Quita los archivos marcados, sube los nuevos y vuelve a tocar “Hecho”.')));
     w.append(h('div',{class:'ma-box'},h('div',{class:'ma-k'},'📄 Instrucciones'),richNode(r.instructions||'Sin instrucciones todavía.','ma-instr')));
-    w.append(h('div',{class:'ma-box'},h('div',{class:'ma-info'},kv('Número de archivos',r.shots),kv('Número de repeticiones',repsFor(r)??r.attachments_model),kv('Due date',d))));
-    if(r.reference_link)w.append(h('div',{class:'ma-box'},h('div',{class:'ma-k'},'Video de referencia'),h('a',{class:'ma-btn ghost',href:r.reference_link,target:'_blank',rel:'noopener'},'Abrir referencia ↗')));
-    w.append(h('div',{class:'ma-box'},h('div',{class:'ma-k'},'Subir a Drive'),r.raw_drive?h('a',{class:'ma-btn',href:r.raw_drive,target:'_blank',rel:'noopener'},'Abrir carpeta de Google Drive'):h('div',{style:'font-size:13px;color:var(--ma-sub)'},'Tu agencia todavía no ha asignado una carpeta de Drive a esta pieza.')));
-    w.append(h('div',{class:'ma-box'},h('div',{class:'ma-k'},'Subir contenido'),h('div',{style:'font-size:13px;color:var(--ma-sub)'},'La subida directa desde aquí llega con la versión final. Por ahora, sube los archivos a la carpeta de Drive.')));
+    w.append(h('div',{class:'ma-box'},h('div',{class:'ma-info'},kv('Número de archivos',r.shots),kv('Número de repeticiones',reqOf(r).reps),kv('Archivos a subir',reqOf(r).files),kv('Due date',d))));
+    const rb=refBox(r);if(rb)w.append(rb);
+    w.append(maUploadBox(r,m));
   }else if(ma.screen==='tutorials'){
     const tut=rows('tutorials').sort((a,b)=>(+a.order||0)-(+b.order||0));
     root.append(top(back(()=>maNav({screen:'home'})),'Tutoriales'),w);w.append(h('div',{style:'height:14px'}));
@@ -1500,7 +1603,7 @@ function modelApp(v){
       const sync=()=>{const b=busy();send.disabled=b||(!(X.text||'').trim()&&!X.files.some(f=>f.st==='ok'));send.textContent=b?'Subiendo archivos…':'Enviar'};
       const start=f=>{f.st='up';f.p=0;f.err=null;const path=m.id+'/'+X.id+'/'+uid()+'-'+f.file.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
         const prog=p=>{f.p=p;if(f.bar)f.bar.style.width=Math.round(p*100)+'%';if(f.pct)f.pct.textContent=Math.round(p*100)+'%'};
-        uploadFile(path,f.file,prog).then(()=>{f.st='ok';f.path=path;if(!X.files.includes(f)){removeFiles([{path}]);return}X.redraw&&X.redraw()}).catch(e=>{if(e.aborted)return;f.st='err';f.err=e.message;X.redraw&&X.redraw()});f.xhr=()=>prog.xhr};
+        uploadFile(path,f.file,prog).then(path=>{f.st='ok';f.path=path;if(!X.files.includes(f)){removeFiles([{path}]);return}X.redraw&&X.redraw()}).catch(e=>{if(e.aborted)return;f.st='err';f.err=e.message;X.redraw&&X.redraw()});f.xhr=()=>prog.xhr};
       const draw=()=>{list.replaceChildren(...X.files.map((f,i)=>{const pb=h('i',{style:'width:'+Math.round((f.p||0)*100)+'%'});f.bar=pb;const pct=h('span',{class:'ma-fpct'},f.st==='up'?Math.round((f.p||0)*100)+'%':f.st==='ok'?'✓':'');f.pct=f.st==='up'?pct:null;
           return h('li',{class:'ma-file'+(f.st==='err'?' err':'')},h('span',{class:'ma-fico','aria-hidden':'true'},isVideo({type:fileMime(f.file),name:f.file.name})?'🎞':'🖼'),
             h('div',{class:'ma-fmain'},h('div',{class:'ma-fname'},f.file.name),h('div',{class:'ma-fsub'},fmtSize(f.file.size),f.st==='err'?h('span',{class:'ma-ferr'},' · '+f.err):null),f.st==='up'?h('div',{class:'ma-fbar',role:'progressbar','aria-label':'Subiendo '+f.file.name,'aria-valuemin':'0','aria-valuemax':'100'},pb):null),
@@ -1579,14 +1682,15 @@ function settingsModal(){const s=settings();const name=h('input',{id:'set_name',
 
 /* ---------- shell ---------- */
 function parseHash(){const x=(location.hash||'').replace('#','');if(!x)return;const p=Object.keys(PAGES).sort((a,b)=>b.length-a.length).find(k=>x===k||x.startsWith(k+'-'));if(p){st.route=p;st.tab=x.length>p.length?x.slice(p.length+1):null}}
-function go(route,tab){if(route==='modelapp'&&st.route!=='modelapp')Object.assign(ma,{screen:'home',extra:null,f:{},reset:true});const hsh=route+(tab?'-'+tab:'');if(location.hash!=='#'+hsh){try{location.hash=hsh}catch(e){}}st.route=route;st.tab=tab||null;document.body.classList.remove('open');$('#view').scrollTop=0;render()}
+function go(route,tab){closePop();if(route==='modelapp'&&st.route!=='modelapp')Object.assign(ma,{screen:'home',extra:null,f:{},reset:true});const hsh=route+(tab?'-'+tab:'');if(location.hash!=='#'+hsh){try{location.hash=hsh}catch(e){}}st.route=route;st.tab=tab||null;document.body.classList.remove('open');$('#view').scrollTop=0;render()}
 const openSec=ls.get('crm:secs',{});
 function render(){
   applyLayout();
   if(S.role==='model'&&S.profile){st.route='modelapp';st.model=S.profile.model_id}
   if(S.loaded&&!S.synced&&S.role!=='model'&&S.d.variations){S.synced=true;setTimeout(syncAllVars,0)}
+  if(S.loaded&&!S.reqSynced&&S.role!=='model'){S.reqSynced=true;setTimeout(()=>rows('content').forEach(r=>{const q=calcReq(r);if(r.reps_needed!==q.reps||r.files_needed!==q.files)put('content',r.id,r,true)}),0)}
   if(S.loaded&&S.role!=='model')setTimeout(genDaily,0);
-  if(!st.keepPop)closePop();const s=settings(),m=model();if(m&&st.model!==m.id){st.model=m.id}
+  if(!st.keepPop&&!(popEl&&popEl.dataset.keep))closePop();const s=settings(),m=model();if(m&&st.model!==m.id){st.model=m.id}
   $('#brandName').textContent=s.agency||'Agency';$('#logo').textContent=(s.agency||'A').slice(0,1).toUpperCase();$('#meName').textContent=(S.profile&&(S.profile.display_name||S.profile.email))||s.me||'Owner';$('#outBtn').style.display=S.sb?'':'none';if(S.profile)$('#meRole').textContent=S.role==='admin'?'Admin':'Modelo';$('#meAv').textContent=(s.me||'ME').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
   $('#modelName').textContent=m?m.name:'No creators';
   const lowN=S.role==='model'?0:lowAccounts().length;const nav=$('#nav');nav.replaceChildren();NAV.forEach(([title,keys])=>{const closed=openSec[title]===false;nav.append(h('div',{class:'sec',onclick:()=>{openSec[title]=closed;ls.set('crm:secs',openSec);render()}},title,h('span',null,closed?'▸':'▾')));if(!closed)keys.forEach(k=>nav.append(h('a',{class:'nav'+(st.route===k?' on':''),href:'#'+k,onclick:e=>{if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(k)}},PAGES[k].icon?h('span',null,PAGES[k].icon):null,PAGES[k].title,k==='pipeline'&&lowN?h('span',{class:'navbadge',title:lowN+' cuentas con menos de 2 días de contenido'},lowN):null)))});
@@ -1596,7 +1700,7 @@ function render(){
   const v=$('#view');const keep=v.scrollTop,keepX=v.scrollLeft;v.replaceChildren();v.style.setProperty('--tbh','0px');if(S.role!=='model'&&['pipeline','plan','content'].includes(st.route)){const ab=alertBar();if(ab)v.append(ab)}const node=tab||page;const key=st.route+'/'+(tab?tab.id:'');
   if(S.slow)v.append(h('div',{class:'empty',style:'padding:8px 14px'},'The database is taking long to answer. Data shown may be incomplete.'));
   document.body.classList.toggle('mview',node.view==='modelapp');if(node.view==='modelapp')modelApp(v);else if(node.view==='access')accessView(v);else if(node.view==='list')listView(node.cfg,key,v);else if(node.view==='plan')planView(v);else if(node.view==='notes')notesView(v);else if(node.view==='calendar')calendarView(v);else if(node.view==='pipeline')pipelineView(node,v);else if(node.view==='assign')assignView(v);else if(node.view==='analytics')analyticsView(node,v);else if(node.view==='linkpages')linkPagesView(v);else if(node.view==='posting')postingView(node,v);else if(node.view==='board')boardView(node,v);
-  if(node.view==='modelapp'&&ma.reset){ma.reset=false;v.scrollTop=0}else{v.scrollTop=keep;v.scrollLeft=keepX}}
+  if(node.view==='modelapp'&&ma.reset){ma.reset=false;v.scrollTop=ma.restoreY||0;ma.restoreY=0}else{v.scrollTop=keep;v.scrollLeft=keepX}}
 $('#searchBtn').addEventListener('click',()=>{if(S.role!=='model')openSearch()});
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'&&S.role!=='model'){e.preventDefault();openSearch()}});
 $('#modelBtn').addEventListener('click',e=>{const ms=rows('models');pop(e.currentTarget,[...ms.map(x=>h('div',{class:'opt',onclick:()=>{st.model=x.id;ls.set('crm:model',x.id);closePop();render()}},x.id===(model()||{}).id?'● ':'○ ',x.name)),ms.length?null:h('div',{class:'opt muted'},'No creators yet'),h('div',{class:'row'},h('button',{type:'button',class:'btn-acc',onclick:()=>{closePop();newRecord(PAGES.creators.cfg)}},'＋ Add creator'))])});
