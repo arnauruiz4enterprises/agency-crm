@@ -29,7 +29,7 @@ html,body{height:100%;margin:0}
 body{background:var(--page);color:var(--text);font:13px/1.45 var(--font);display:flex;overflow:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:1px solid var(--border);padding:6px 10px;color:var(--text)}
-button:hover{background:var(--hover)}
+button:where(:not(.ma *)):hover{background:var(--hover)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 a{color:var(--accent);text-decoration:none;word-break:break-all}
 a:hover{text-decoration:underline}
@@ -296,7 +296,7 @@ body.mview .dlg .btn-acc{color:#fff;background:#232a4a;border-color:#232a4a}
 .ma-card .s{font-size:12px;color:var(--ma-sub)}
 .ma .ma-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 10px #0000000d;width:100%;border:none;color:inherit;font-weight:600;text-align:left}
 .ma-row .ar{margin-left:auto;color:var(--ma-sub)}
-.ma .ma-card:hover,.ma .ma-row:hover,.ma .ma-item:hover,.ma .ma-type:hover{background:#fdfbf5;text-decoration:none}
+@media (hover:hover){.ma .ma-card:hover,.ma .ma-row:hover,.ma .ma-item:hover,.ma .ma-type:hover{background:#fdfbf5;text-decoration:none}}.ma,.ma *{-webkit-tap-highlight-color:transparent}.ma .ma-item-main,.ma .ma-tog{-webkit-user-select:none;user-select:none}
 .ma .ma-fab{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;width:min(488px,calc(100% - 32px));background:linear-gradient(135deg,var(--ma-gold1),#b8962e);color:#fff;border:none;border-radius:16px;padding:16px;font-weight:600;box-shadow:0 8px 24px #b8962e66;z-index:6}
 .ma .ma-fab:hover{background:linear-gradient(135deg,#bf9f44,#a8872a)}
 .ma-seg{display:grid;grid-template-columns:1fr 1fr;background:#efe9d6;border-radius:12px;padding:3px;margin:16px 0 10px}
@@ -327,7 +327,7 @@ body.mview .dlg .btn-acc{color:#fff;background:#232a4a;border-color:#232a4a}
 .ma-upmsg{margin-top:10px;font-size:13px;font-weight:600;padding:8px 10px;border-radius:10px;background:#fff4d6;color:#8a5a00}.ma-upmsg.ok{background:#e3f6e8;color:#1c7a3a}.ma-upmsg.over{background:#fdecec;color:#b3261e}
 .ma-file .fthumb{width:44px;height:44px}
 .ma-attach{position:relative;display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px 16px;border:1.5px dashed #c9a94e;border-radius:14px;background:#faf6ee;color:var(--ma-ink);cursor:pointer}
-.ma-attach:hover{background:#f5eedd}.ma-attach:focus-within{outline:2px solid var(--ma-navy);outline-offset:2px}
+@media (hover:hover){.ma-attach:hover{background:#f5eedd}}.ma-attach .sr-file{position:absolute;inset:0;width:100%;height:100%;clip:auto;opacity:0;cursor:pointer;z-index:2;font-size:16px}.ma-attach:focus-within{outline:2px solid var(--ma-navy);outline-offset:2px}
 .sr-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
 .ma-fnote{font-size:12px;color:#b3261e;margin-top:6px}.ma-fnote:empty{display:none}
 .ma-files{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
@@ -569,7 +569,7 @@ const PAGES={
  modelapp:{title:'Model App',sub:'',icon:'📱',global:true,view:'modelapp'},
  access:{title:'Accesos',sub:'logins de tu equipo y tus modelos',icon:'🔑',global:true,view:'access'}
 };
-const NAV=[['🚀 CD Interface',['plan','accounts','pipeline','content','analytics','variations','inspo','templates']],['📲 Posting',['posting','funneling']],['🧿 Edits MGMT',['editsmgmt']],['✅ Projects & Tasks',['projects','tasks']],['💃 Model Allocation',['creators','access']],['📚 Knowledge Library',['knowledge']],['📱 Model App',['modelapp','tutorials']]];
+const NAV=[['🚀 CD Interface',['plan','accounts','pipeline','content','analytics','variations','inspo','templates']],['📲 Posting',['posting','funneling']],['🧿 Edits MGMT',['editsmgmt']],['✅ Projects & Tasks',['projects','tasks']],['💃 Model Allocation',['creators','access']],['📚 Knowledge Library',['knowledge']],['📱 Apps de modelos',['modelapp','tutorials']]];
 const SOON=[];
 
 /* ---------- popover / modal ---------- */
@@ -1496,12 +1496,8 @@ function refEmbed(u){try{const x=new URL(u);const host=x.hostname.replace(/^www\
   if(/(^|\.)youtube\.com$/.test(host)){const id=x.searchParams.get('v')||((m=p.match(/\/(shorts|embed|live)\/([A-Za-z0-9_-]{6,})/))&&m[2]);if(id)return {src:'https://www.youtube.com/embed/'+id,app:'YouTube'}}
   if(host==='youtu.be'&&(m=p.match(/^\/([A-Za-z0-9_-]{6,})/)))return {src:'https://www.youtube.com/embed/'+m[1],app:'YouTube'};
   }catch(e){}return null}
-function refBox(r,compact){const u=r.reference_link;if(!u)return null;const E=refEmbed(u);ma.ref=ma.ref||new Set();const open=E&&ma.ref.has(r.id);const host=(()=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return ''}})();
-  const ext=h('a',{class:'ma-btn ghost',href:u,target:'_blank',rel:'noopener'},E?'Abrir en '+E.app+' ↗':'Abrir referencia ↗');
-  return h('div',{class:compact?'ma-refc':'ma-box'},h('div',{class:'ma-k'},'Video de referencia'),
-    E?h('div',{class:'ma-refacts'},h('button',{type:'button',class:'ma-btn','aria-expanded':String(!!open),onclick:()=>{open?ma.ref.delete(r.id):ma.ref.add(r.id);rerender()}},open?'Ocultar vídeo':'▶ Ver aquí'),ext):ext,
-    open?h('div',{class:'ma-refwrap'},h('iframe',{src:E.src,title:'Vídeo de referencia',loading:'lazy',allow:'autoplay; encrypted-media; picture-in-picture; fullscreen',allowfullscreen:true,referrerpolicy:'strict-origin-when-cross-origin'})):null,
-    open?h('div',{class:'ma-fsub',style:'margin-top:6px'},'Si no carga, usa “Abrir en '+E.app+'”.'):(!E&&host?h('div',{class:'ma-fsub',style:'margin-top:6px'},'Este link ('+host+') solo se puede abrir fuera de la app.'):null))}
+function refBox(r,compact){const u=r.reference_link;if(!u)return null;const E=refEmbed(u);
+  return h('div',{class:compact?'ma-refc':'ma-box'},h('div',{class:'ma-k'},'Video de referencia'),h('a',{class:'ma-btn',href:u,target:'_blank',rel:'noopener'},E?'▶ Ver en '+E.app+' ↗':'▶ Abrir referencia ↗'))}
 function maUploadBox(r,m){const pending=PENDING.includes(r.status);const R=rawState(r);const U=(ma.up[r.id]=ma.up[r.id]||[]);const box=h('div',{class:'ma-box ma-upbox'});
   const start=u=>{u.st='up';u.p=0;u.err=null;const path=m.id+'/'+r.id+'/'+uid()+'-'+u.file.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
     const prog=p=>{u.p=p;if(u.bar)u.bar.style.width=Math.round(p*100)+'%';if(u.pct)u.pct.textContent=Math.round(p*100)+'%'};u.xhr=()=>prog.xhr;
@@ -1703,9 +1699,9 @@ function render(){
   if(!st.keepPop&&!(popEl&&popEl.dataset.keep))closePop();const s=settings(),m=model();if(m&&st.model!==m.id){st.model=m.id}
   $('#brandName').textContent=s.agency||'Agency';$('#logo').textContent=(s.agency||'A').slice(0,1).toUpperCase();$('#meName').textContent=(S.profile&&(S.profile.display_name||S.profile.email))||s.me||'Owner';$('#outBtn').style.display=S.sb?'':'none';if(S.profile)$('#meRole').textContent=S.role==='admin'?'Admin':'Modelo';$('#meAv').textContent=(s.me||'ME').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
   $('#modelName').textContent=m?m.name:'No creators';
-  const lowN=S.role==='model'?0:lowAccounts().length;const nav=$('#nav');nav.replaceChildren();NAV.forEach(([title,keys])=>{const closed=openSec[title]===false;nav.append(h('div',{class:'sec',onclick:()=>{openSec[title]=closed;ls.set('crm:secs',openSec);render()}},title,h('span',null,closed?'▸':'▾')));if(!closed)keys.forEach(k=>nav.append(h('a',{class:'nav'+(st.route===k?' on':''),href:'#'+k,onclick:e=>{if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(k)}},PAGES[k].icon?h('span',null,PAGES[k].icon):null,PAGES[k].title,k==='pipeline'&&lowN?h('span',{class:'navbadge',title:lowN+' cuentas con menos de 2 días de contenido'},lowN):null)))});
+  const lowN=S.role==='model'?0:lowAccounts().length;const nav=$('#nav');nav.replaceChildren();NAV.forEach(([title,keys])=>{const closed=openSec[title]===false;nav.append(h('div',{class:'sec',onclick:()=>{openSec[title]=closed;ls.set('crm:secs',openSec);render()}},title,h('span',null,closed?'▸':'▾')));if(!closed)keys.forEach(k=>{if(k==='modelapp'){rows('models').slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))).forEach(x=>nav.append(h('a',{class:'nav'+(st.route==='modelapp'&&st.model===x.id?' on':''),href:'#modelapp',title:'App de '+(x.name||'la modelo'),onclick:e=>{if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();st.model=x.id;ls.set('crm:model',x.id);go('modelapp')}},h('span',null,'📱'),x.name||'Modelo')));return}nav.append(h('a',{class:'nav'+(st.route===k?' on':''),href:'#'+k,onclick:e=>{if(e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(k)}},PAGES[k].icon?h('span',null,PAGES[k].icon):null,PAGES[k].title,k==='pipeline'&&lowN?h('span',{class:'navbadge',title:lowN+' cuentas con menos de 2 días de contenido'},lowN):null))})});
   SOON.forEach(([t,p])=>nav.append(h('div',{class:'sec',style:'cursor:default;opacity:.55'},t,h('small',{style:'font-weight:500;text-transform:none;letter-spacing:0'},p))));
-  const page=PAGES[st.route]||PAGES.accounts;$('#title').textContent=page.title;$('#subtitle').textContent=(page.global||!m?'':m.name+' · ')+page.sub;document.title=(s.agency||'Agency')+' CRM';
+  const page=PAGES[st.route]||PAGES.accounts;const isMA=st.route==='modelapp'&&m;$('#title').textContent=isMA?'📱 '+m.name:page.title;$('#subtitle').textContent=isMA?'App de '+m.name+' · solo ve su propio contenido':(page.global||!m?'':m.name+' · ')+page.sub;document.title=(s.agency||'Agency')+' CRM';
   const tabs=$('#tabs');tabs.replaceChildren();let tab=null;if(page.tabs){tab=page.tabs.find(t=>t.id===st.tab)||page.tabs[0];page.tabs.forEach(t=>tabs.append(h('a',{href:'#'+st.route+'-'+t.id,class:t===tab?'on':'',onclick:e=>{e.preventDefault();go(st.route,t.id)}},t.dot?h('span',{class:'dot',style:'background:'+t.dot}):null,t.label)));tabs.style.display='flex'}else tabs.style.display='none';
   const v=$('#view');const keep=v.scrollTop,keepX=v.scrollLeft;v.replaceChildren();v.style.setProperty('--tbh','0px');if(S.role!=='model'&&['pipeline','plan','content'].includes(st.route)){const ab=alertBar();if(ab)v.append(ab)}const node=tab||page;const key=st.route+'/'+(tab?tab.id:'');
   if(S.slow)v.append(h('div',{class:'empty',style:'padding:8px 14px'},'The database is taking long to answer. Data shown may be incomplete.'));
