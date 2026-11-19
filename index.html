@@ -626,10 +626,16 @@ function ensureVars(r,idx){if(!r||!['Approved','Semi-Posted','Posted'].includes(
   const have=idx?(idx.get(r.content_id)||new Set()):new Set(rows('variations').filter(v=>v.content_id&&v.content_id===r.content_id).map(v=>v.account_id));
   arr(r.accounts).forEach((l,i)=>{const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id)||have.has(a.id))return;n++;
     put('variations',id,{name:'Variation-'+(i+1)+'-'+(r.content_id||'')+(r.vertical?'-'+r.vertical:''),model:r.model,content_ref:r.id,content_id:r.content_id,accounts:[accLabel(a)],account_id:a.id,platform:a.platform,type:r.type,vertical:r.vertical||null,trial_reels:!!r.trial_reels,instructions:r.instructions||null,tags:arr(r.tags),edited_drive:r.edited_drive||null,file:null,vstatus:'Approved',seen:'Not Seen',removed:'Not Removed'},true)});return n}
-function syncAllVars(){let n=0;const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});if(n)rerender()}
+const LIVE_ST=['Approved','Semi-Posted','Posted'];
+/* content moved back before Approved: remove the variations the CRM created for it that were never used */
+function retractVars(r){if(!r||LIVE_ST.includes(r.status)||!r.id)return 0;const pre='v-'+r.id+'-';let n=0;
+  rows('variations').forEach(v=>{if(!String(v.id).startsWith(pre)||v.vstatus!=='Approved'||v.ig_link||v.posted||v.views)return;
+    const tasks=rows('actions').filter(t=>t.variation_ref===v.id);if(tasks.some(t=>isDone(t)))return;
+    tasks.forEach(t=>put('actions',t.id,{...t,variation_ref:null},true));delQuiet('variations',v.id);n++});return n}
+function syncAllVars(){let n=0;rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});if(n)rerender()}
 let inHook=false;
 function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHook=true;try{
-  if(c==='content')ensureVars(row);
+  if(c==='content'){ensureVars(row);if(retractVars(row))rerender()}
   if(c==='actions'){const a=row.account_id?S.d.accounts.get(row.account_id):accFind(arr(row.account)[0]);
     if(POST_TYPES.includes(row.action_type)&&row.variation_ref&&S.d.variations.has(row.variation_ref)){const v=S.d.variations.get(row.variation_ref);
       if(isDone(row)&&(v.vstatus!=='Posted'||(row.post_link&&v.ig_link!==row.post_link)))put('variations',v.id,{...v,vstatus:'Posted',posted:v.posted||row.due||today(),ig_link:row.post_link||v.ig_link||null},true);
@@ -1075,7 +1081,7 @@ function bulkEdit(cfg,vs){const ids=[...vs.sel];const cols=cfg.allCols.filter(c=
 
 /* ---------- low-content alerts ---------- */
 const BAD_ACC=['Paused & Inactive','Suspended for Appeal','Suspended Selfie Loop','Disabled','Pending','Login Issue','Verification Pending (NO USE)'];
-function approvedByAcc(kind){const out=new Map();rows('variations').forEach(v=>{if(v.vstatus!=='Approved')return;const c=v.content_ref&&S.d.content.get(v.content_ref);if(c&&['Archived','Not Done'].includes(c.status))return;
+function approvedByAcc(kind){const out=new Map();rows('variations').forEach(v=>{if(v.vstatus!=='Approved')return;const c=v.content_ref&&S.d.content.get(v.content_ref);if(c&&!LIVE_ST.includes(c.status))return;
     const ok=kind==='stories'?v.type==='Stories':v.type!=='Stories'&&(kind==='trial'?!!v.trial_reels:(!v.trial_reels&&!(c&&c.trial_reels)));if(!ok)return;
     const ids=v.account_id?[v.account_id]:arr(v.accounts).map(l=>{const f=accFind(l);return f&&f.id}).filter(Boolean);ids.forEach(id=>out.set(id,(out.get(id)||0)+1))});return out}
 function lowAccounts(){const out=[];const N=approvedByAcc('normal');
@@ -1148,7 +1154,7 @@ function pipeFilterBtn(label,opts,sel,optKey,onSet){const sum=sel.length?[h('spa
 function pipelineView(tab,root){const kind=tab.trial===true?'trial':(tab.types||[]).includes('Stories')?'stories':'normal';
   const dk=kind==='trial'?'daily_trial':kind==='stories'?'daily_stories':'daily_posts';const dl='Daily Posts';const F=pipeFilters(tab.id);const setF=(k,v)=>{F[k]=v;pipeSave(tab.id,F);rerender()};
   const allAcc=mine('accounts');const m=model();const vAll=rows('variations').filter(v=>!m||v.model===m.id);
-  const cOf=v=>v.content_ref&&S.d.content.get(v.content_ref);const ctrial=v=>{const c=cOf(v);return !!(c&&c.trial_reels)};const cDead=v=>{const c=cOf(v);return !!(c&&['Archived','Not Done'].includes(c.status))};
+  const cOf=v=>v.content_ref&&S.d.content.get(v.content_ref);const ctrial=v=>{const c=cOf(v);return !!(c&&c.trial_reels)};const cDead=v=>{const c=cOf(v);return !!(c&&!LIVE_ST.includes(c.status))};
   const inKind=v=>!cDead(v)&&(kind==='stories'?v.type==='Stories':v.type!=='Stories'&&(kind==='trial'?!!v.trial_reels:(!v.trial_reels&&!ctrial(v))));
   const kv=vAll.filter(inKind);
   const byAcc=new Map();kv.forEach(v=>{let ids=v.account_id?[v.account_id]:arr(v.accounts).map(l=>{const f=accFind(l);return f&&f.id}).filter(Boolean);ids.forEach(id=>{if(!byAcc.has(id))byAcc.set(id,[]);byAcc.get(id).push(v)})});
@@ -1196,7 +1202,7 @@ function pipelineView(tab,root){const kind=tab.trial===true?'trial':(tab.types||
           h('tbody',null,list.map(v=>h('tr',null,h('td',null,h('button',{type:'button',class:'plain',style:'text-align:left;font-weight:600',onclick:()=>vcfg&&recordModal(vcfg,v,false)},v.name||v.id)),h('td',null,chip(v.vstatus,'var_status')||v.vstatus||'—'),h('td',null,v.vertical?chip(v.vertical,'vertical'):'—'),
             h('td',null,varFile(v)?h('button',{type:'button',class:'plain',onclick:()=>playVar(v),'aria-label':'Ver vídeo de '+(v.name||'')},thumb(v)):h('span',{class:'muted'},'—')),h('td',null,arr(v.accounts).map(l=>accChip(l))),kind==='stories'?null:h('td',null,v.trial_reels?'✓':'—'),h('td',null,assigned(v))))))
         :h('div',{class:'muted'},'Sin variaciones con estos filtros.')))}});
-  root.append(lv,h('div',{class:'foot'},h('b',null,acc.length+' cuentas'),' · doble clic en “'+dl+'” para editarlo · ▸ para ver las variaciones de cada cuenta · Days of content = aprobados ÷ daily posts'+(kind==='normal'?' · no cuenta variaciones de contenido marcado como Trial Reels ni de contenido Archived / Not Done':'')))}
+  root.append(lv,h('div',{class:'foot'},h('b',null,acc.length+' cuentas'),' · doble clic en “'+dl+'” para editarlo · ▸ para ver las variaciones de cada cuenta · Days of content = aprobados ÷ daily posts'+(kind==='normal'?' · no cuenta variaciones de contenido marcado como Trial Reels ni de contenido que no esté en Approved / Semi-Posted / Posted':'')))}
 
 /* ---------- daily posting tasks (today only, deterministic ids) ---------- */
 function delQuiet(c,id){S.d[c].delete(id);if(S.mode==='sb')S.sb.from('docs').delete().eq('col',c).eq('id',String(id)).then(()=>{});else if(S.mode==='local')saveLocal(c)}
