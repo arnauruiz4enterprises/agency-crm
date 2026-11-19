@@ -433,8 +433,8 @@ const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.par
 /* ---------- options ---------- */
 const O={
  content_status:{'Raw Content':'#18bfff','Template':'#444444','To Do':'#ffd66e','Instructions Added':'#b87503','Recorded':'#2750ae','Edited':'#8b46ff','Approved':'#fcb400','Not Approved':'#ff6f2c','Semi-Posted':'#93e088','Posted':'#20c933','Not Done':'#f82b60','Archived':'#338a17','Proposal':'#444444'},
- account_status:{'Running & Posting':'#20c933','Paused & Inactive':'#fcb400','Warming Up':'#d0f0fd','Cooling Down':'#2d7ff9','Pending':'#ede2fe','Suspended for Appeal':'#f82b60','Suspended Selfie Loop':'#ba1e45','Verification Pending (NO USE)':'#d1f7c4','Login Issue':'#cccccc','Managed By Model':'#ffa981','Backup Running':'#93e088','Private Account Back Up':'#9cc7ff','Private Funneling':'#cfdfff','Disabled':'#444444'},
- health:{'✅ No Flags':'#20c933','Search Ban':'#f82b60','Shadowban':'#ff6f2c','Reach Limit':'#fcb400','Action Block':'#ba1e45'},
+ account_status:{'Running & Posting':'#20c933','Paused & Inactive':'#fcb400','Warming Up':'#d0f0fd','Cooling Down':'#2d7ff9','Pending':'#ede2fe','Suspended for Appeal':'#f82b60','Suspended Selfie Loop':'#ba1e45','Verification Pending (NO USE)':'#d1f7c4','Login Issue':'#cccccc','Managed By Model':'#ffa981','IG Posting Restriction':'#ff9eb7','Backup Running':'#93e088','Private Account Back Up':'#9cc7ff','Private Funneling':'#cfdfff','Disabled':'#444444'},
+ health:{'✅ No Flags':'#20c933','Account Suspended / Log in Issue':'#444444','Search Ban':'#f82b60','Shadowban':'#ff6f2c','Reach Limit':'#fcb400','Action Block':'#ba1e45'},
  platform:{'Instagram':'#f82b60','TikTok':'#20d9d2','Twitter':'#77d1f3','YouTube':'#e5484d','Facebook Page':'#2750ae','Twitch':'#8b46ff','Threads':'#cccccc','Snapchat':'#ffd66e','Reddit':'#ff6f2c'},
  verified:{'Verified':'#2d7ff9','Not Verified':'#444444','verification pending':'#ffd66e'},
  country:{'USA':'#d0f0fd','ESP':'#cfdfff','GER':'#c2f5e9','UAE':'#d1f7c4'},
@@ -621,7 +621,7 @@ const POST_TYPES=['Post','Post Reel','Post Story','Story'];const isDone=t=>!!t&&
 const kindOf=t=>(t.action_type==='Post Story'||t.action_type==='Story')?'SR':t.trial_reels?'TR':'NR';
 const KIND={NR:['Normal Reel','Post Reel',false],TR:['Trial Reel','Post Reel',true],SR:['Stories','Post Story',false]};
 const today=()=>iso(new Date());
-function ensureVars(r,idx){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status)||r.k_src==='kalista-csv')return 0;let n=0;
+function ensureVars(r,idx){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status)||r.k_src==='kalista-csv'||(r.kalista_id&&r.status!=='Approved'))return 0;let n=0;
   const have=idx?(idx.get(r.content_id)||new Set()):new Set(rows('variations').filter(v=>v.content_id&&v.content_id===r.content_id).map(v=>v.account_id));
   arr(r.accounts).forEach((l,i)=>{const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id)||have.has(a.id))return;n++;
     put('variations',id,{name:'Variation-'+(i+1)+'-'+(r.content_id||'')+(r.vertical?'-'+r.vertical:''),model:r.model,content_ref:r.id,content_id:r.content_id,accounts:[accLabel(a)],account_id:a.id,platform:a.platform,type:r.type,vertical:r.vertical||null,trial_reels:!!r.trial_reels,instructions:r.instructions||null,tags:arr(r.tags),edited_drive:r.edited_drive||null,file:null,vstatus:'Approved',seen:'Not Seen',removed:'Not Removed'},true)});return n}
@@ -1131,20 +1131,67 @@ function calendarView(root){root.append(weekNav());const m=model();if(!m){root.a
 
 /* ---------- pipeline ---------- */
 /* ---------- pipeline ---------- */
-function pipelineView(tab,root){const isTrial=tab.trial===true;const dk=isTrial?'daily_trial':'daily_posts';const dl=isTrial?'Daily Trial Reels':'Daily Posts';
-  let acc=mine('accounts');if(isTrial)acc=acc.filter(a=>a.platform==='Instagram');
-  const content=mine('content').filter(r=>tab.types.includes(r.type)&&(tab.trial==null||!!r.trial_reels===tab.trial));
-  if(!acc.length){root.append(h('div',{class:'empty'},isTrial?'Esta modelo no tiene cuentas de Instagram. Los trial reels solo van en Instagram.':'No accounts yet. Add them in Accounts.'));return}
-  const lvl=(a,ap)=>{if(!ap)return' bad';const d=+a[dk]||0;if(!d)return' good';return ap/d>3?' good':' warn'};
-  const cols=[['Instructions Added',(a,n)=>n('Instructions Added')],['Recorded',(a,n)=>n('Recorded')],['Edited',(a,n)=>n('Edited')],['Approved',(a,n)=>n('Approved'),1],['Days of Content',(a,n)=>{const d=+a[dk]||0;const ap=n('Approved');return d?Math.round(ap/d*10)/10:(ap?'∞':0)},1]];
-  const lv=h('div',{class:'lv',style:'--cols:320px 64px 130px '+cols.map(()=>'120px').join(' ')+' 240px 190px 160px'});
-  lv.append(h('div',{class:'lhead'},h('div',null,'Account ID'),h('div',null,'Prof.'),h('div',null,dl+' ✎'),cols.map(c=>h('div',null,c[0])),h('div',null,'Account Link'),h('div',null,'Account Status'),h('div',null,'Account Health')));
-  const cfg={col:'accounts'};
-  acc.sort((a,b)=>(+b.reach_30d||0)-(+a.reach_30d||0)).forEach(a=>{const label=accLabel(a);const own=content.filter(r=>arr(r.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}));const n=s=>own.filter(r=>r.status===s).length;const ap=n('Approved');
+const PIPE_DEF_ACC=['Running & Posting','Cooling Down','Warming Up','Suspended for Appeal','Pending','IG Posting Restriction','Managed By Model','Verification Pending (NO USE)'];
+const isCarousel=v=>/carrusel|carousel/i.test(String(v&&v.vertical||''));
+let pipeOpen=new Set();
+function pipeFilters(id){const all=ls.get('crm:pf',{});const f=all[id]||{};return {acc:Array.isArray(f.acc)?f.acc:[...PIPE_DEF_ACC],plat:Array.isArray(f.plat)?f.plat:[],vst:Array.isArray(f.vst)?f.vst:['Approved'],vert:Array.isArray(f.vert)?f.vert:[]}}
+function pipeSave(id,f){const all=ls.get('crm:pf',{});all[id]=f;ls.set('crm:pf',all)}
+function pipeFilterBtn(label,opts,sel,optKey,onSet){const sum=sel.length?[h('span',{class:'op'},'is any of'),sel.slice(0,2).map(v=>optKey?chip(v,optKey):h('b',null,v)),sel.length>2?h('span',{class:'muted'},'+'+(sel.length-2)):null]:[h('span',{class:'op'},'is any of'),h('span',{class:'muted'},'todos')];
+  return h('button',{type:'button',class:'fbtn',onclick:e=>{const box=h('div',{style:'max-height:320px;overflow:auto;min-width:220px'});const cur=new Set(sel);
+    const draw=()=>box.replaceChildren(...opts.map(o=>h('label',{class:'opt',style:'display:flex;gap:8px;align-items:center'},h('input',{type:'checkbox',checked:cur.has(o),onchange:ev=>{ev.target.checked?cur.add(o):cur.delete(o);onSet([...cur])}}),optKey?chip(o,optKey):o)));draw();
+    pop(e.currentTarget,h('div',null,box,h('div',{style:'display:flex;gap:8px;padding:6px 8px;border-top:1px solid var(--line)'},h('button',{type:'button',class:'plain',onclick:()=>{cur.clear();onSet([]);draw()}},'Todos'),h('button',{type:'button',class:'plain',onclick:()=>{closePop()}},'Cerrar'))))}},h('b',null,label),sum)}
+function pipelineView(tab,root){const kind=tab.trial===true?'trial':(tab.types||[]).includes('Stories')?'stories':'normal';
+  const dk=kind==='trial'?'daily_trial':kind==='stories'?'daily_stories':'daily_posts';const dl='Daily Posts';const F=pipeFilters(tab.id);const setF=(k,v)=>{F[k]=v;pipeSave(tab.id,F);rerender()};
+  const allAcc=mine('accounts');const m=model();const vAll=rows('variations').filter(v=>!m||v.model===m.id);
+  const cOf=v=>v.content_ref&&S.d.content.get(v.content_ref);const ctrial=v=>{const c=cOf(v);return !!(c&&c.trial_reels)};const cDead=v=>{const c=cOf(v);return !!(c&&['Archived','Not Done'].includes(c.status))};
+  const inKind=v=>!cDead(v)&&(kind==='stories'?v.type==='Stories':v.type!=='Stories'&&(kind==='trial'?!!v.trial_reels:(!v.trial_reels&&!ctrial(v))));
+  const kv=vAll.filter(inKind);
+  const byAcc=new Map();kv.forEach(v=>{let ids=v.account_id?[v.account_id]:arr(v.accounts).map(l=>{const f=accFind(l);return f&&f.id}).filter(Boolean);ids.forEach(id=>{if(!byAcc.has(id))byAcc.set(id,[]);byAcc.get(id).push(v)})});
+  const asg=new Map();rows('actions').forEach(t=>{if(t.variation_ref){if(!asg.has(t.variation_ref))asg.set(t.variation_ref,[]);asg.get(t.variation_ref).push(t)}});
+  const kindLbl=t=>KIND[kindOf(t)]?kindOf(t):'';const fmtD=d=>{const x=new Date(String(d)+'T12:00');return isNaN(x)?String(d||''):x.getDate()+' '+x.toLocaleDateString('en-US',{month:'short'})};
+  const assigned=v=>{const L=asg.get(v.id)||[];if(!L.length)return '—';return L.map(t=>[kindLbl(t),fmtD(t.due),(arr(t.account)[0]||'').split('-')[1]||'',isDone(t)?'posted':null].filter(Boolean).join(' · ')).join(' | ')};
+  const content=mine('content').filter(r=>kind==='stories'?r.type==='Stories':(r.type==='Short Form'&&(kind==='trial'?!!r.trial_reels:!r.trial_reels)));
+  const plats=[...new Set(allAcc.map(a=>a.platform).filter(Boolean))].sort();const verts=[...new Set(kv.map(v=>v.vertical).filter(Boolean))].sort();
+  const accSt=Object.keys(O.account_status||{});
+  const bar=h('div',{class:'toolbar',style:'flex-wrap:wrap;gap:8px'},
+    pipeFilterBtn('Account Status',accSt.length?accSt:PIPE_DEF_ACC,F.acc,'account_status',v=>setF('acc',v)),
+    pipeFilterBtn('Platforms',plats,F.plat,null,v=>setF('plat',v)),
+    pipeFilterBtn('Status',['Approved','Posted','Cancelled'],F.vst,'var_status',v=>setF('vst',v)),
+    pipeFilterBtn('Vertical',verts,F.vert,'vertical',v=>setF('vert',v)),
+    h('button',{type:'button',class:'plain',onclick:()=>{const all=ls.get('crm:pf',{});delete all[tab.id];ls.set('crm:pf',all);rerender()}},'Restablecer filtros'),
+    h('span',{style:'flex:1'}),
+    h('button',{type:'button',onclick:()=>{const ids=acc.map(a=>tab.id+':'+a.id);const anyOpen=ids.some(i=>pipeOpen.has(i));ids.forEach(i=>anyOpen?pipeOpen.delete(i):pipeOpen.add(i));rerender()}},'⊞ Expandir / contraer todo'));
+  let acc=allAcc.filter(a=>(!F.acc.length||F.acc.includes(a.status))&&(!F.plat.length||F.plat.includes(a.platform)));
+  root.append(bar);
+  if(!acc.length){root.append(h('div',{class:'empty'},'Ninguna cuenta cumple los filtros. Pulsa “Restablecer filtros”.'));return}
+  const vf=v=>(!F.vst.length||F.vst.includes(v.vstatus))&&(!F.vert.length||F.vert.includes(v.vertical));
+  const showCar=kind==='normal';
+  const cols=[['Instructions Added',(a,n)=>n('Instructions Added')],['Recorded',(a,n)=>n('Recorded')]];if(kind!=='stories')cols.push(['Edited',(a,n)=>n('Edited')]);
+  const lv=h('div',{class:'lv',style:'--cols:330px 64px 110px '+cols.map(()=>'110px').join(' ')+' 130px '+(showCar?'140px ':'')+'110px 230px 180px 170px'});
+  lv.append(h('div',{class:'lhead'},h('div',null,'Account ID'),h('div',null,'Prof.'),h('div',null,dl+' ✎'),cols.map(c=>h('div',null,c[0])),h('div',null,kind==='stories'?'Stories Approved':kind==='trial'?'Trial Approved':'Reels Approved'),showCar?h('div',null,'Carousels Approved'):null,h('div',null,'Days of content'),h('div',null,'Account Link'),h('div',null,'Account Status'),h('div',null,'Account Health')));
+  const cfg={col:'accounts'};const vcfg=(PAGES.variations.tabs[0]||{}).cfg;
+  const rk={'Running & Posting':0,'Cooling Down':1,'Warming Up':2};
+  acc.sort((a,b)=>((rk[a.status]??9)-(rk[b.status]??9))||((byAcc.get(b.id)||[]).length-(byAcc.get(a.id)||[]).length)).forEach(a=>{const label=accLabel(a);
+    const own=content.filter(r=>arr(r.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}));const n=s=>own.filter(r=>r.status===s).length;
+    const mv=(byAcc.get(a.id)||[]);const apv=mv.filter(v=>v.vstatus==='Approved');const reels=showCar?apv.filter(v=>!isCarousel(v)).length:apv.length;const car=showCar?apv.filter(isCarousel).length:0;
+    const d=+a[dk]||0;const days=d?Math.floor((reels+car)/d):0;const key=tab.id+':'+a.id;const open=pipeOpen.has(key);
+    const tone=v=>v>0?' good':' bad';const dtone=!(reels+car)?' bad':!d?' good':days<=3?' warn':' good';
     const dcol={k:dk,t:'number',l:dl};const dtd=h('div',{class:'cell','data-e':'1',title:'Doble clic para cambiar '+dl,tabindex:'0',ondblclick:()=>editCell(dtd,dcol,S.d.accounts.get(a.id),cfg),onkeydown:e=>{if(e.key==='Enter'&&e.target===dtd)editCell(dtd,dcol,S.d.accounts.get(a.id),cfg)}},h('span',{class:'lbl'},dl),h('span',null,a[dk]==null||a[dk]===''?h('span',{class:'muted'},'— ✎'):fmt(a[dk])));
-    lv.append(h('div',{class:'lrow'},h('div',{class:'t'},h('span',{class:'nm'},platIcon(a.platform),h('span',null,label))),h('div',{class:'cell'},a.pfp?h('img',{class:'pfp',src:a.pfp,alt:'',loading:'lazy',referrerpolicy:'no-referrer'}):h('span',{class:'muted'},'—')),dtd,cols.map(c=>{const v=c[1](a,n);return h('div',{class:'cell ro'+(c[2]?lvl(a,ap):'')},h('span',{class:'lbl'},c[0]),h('span',null,typeof v==='number'?fmt(v):v))}),
-      h('div',{class:'cell'},h('span',{class:'lbl'},'Account Link'),h('span',null,a.link?h('a',{href:a.link,target:'_blank',rel:'noopener'},a.link.replace(/^https?:\/\/(www\.)?/,'')):'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Status'),h('span',null,chip(a.status,'account_status')||'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Health'),h('span',null,chip(a.health,'health')||'—'))))});
-  root.append(lv,h('div',{class:'foot'},h('b',null,acc.length+' accounts'),' · doble clic en “'+dl+'” para editarlo · rojo = sin contenido aprobado · naranja = 3 días o menos · verde = más de 3 días'+(isTrial?' · solo cuentas de Instagram':'')))}
+    lv.append(h('div',{class:'lrow',style:'border-left:4px solid '+((reels+car)?'#3fa362':'#e5484d')},
+      h('div',{class:'t'},h('span',{class:'nm',style:'display:flex;gap:8px;align-items:center'},h('button',{type:'button',class:'plain','aria-expanded':String(open),'aria-label':(open?'Ocultar':'Ver')+' variaciones de '+label,onclick:()=>{open?pipeOpen.delete(key):pipeOpen.add(key);rerender()},style:'padding:0 6px;opacity:1'},open?'▾':'▸'),platIcon(a.platform),h('span',null,label))),
+      h('div',{class:'cell'},a.pfp?h('img',{class:'pfp',src:a.pfp,alt:'',loading:'lazy',referrerpolicy:'no-referrer'}):h('span',{class:'muted'},'—')),dtd,
+      cols.map(c=>{const v=c[1](a,n);return h('div',{class:'cell ro'},h('span',{class:'lbl'},c[0]),h('span',null,fmt(v)))}),
+      h('div',{class:'cell ro'+tone(reels)},h('span',{class:'lbl'},'Approved'),h('span',null,fmt(reels))),
+      showCar?h('div',{class:'cell ro'+(car>0?' warn':' bad')},h('span',{class:'lbl'},'Carousels'),h('span',null,fmt(car))):null,
+      h('div',{class:'cell ro'+dtone},h('span',{class:'lbl'},'Days'),h('span',null,fmt(days))),
+      h('div',{class:'cell'},h('span',{class:'lbl'},'Account Link'),h('span',null,a.link?h('a',{href:a.link,target:'_blank',rel:'noopener'},a.link.replace(/^https?:\/\/(www\.)?/,'')):'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Status'),h('span',null,chip(a.status,'account_status')||'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Health'),h('span',null,chip(a.health,'health')||'—'))));
+    if(open){const list=mv.filter(vf).sort((x,y)=>String(y.posted||'').localeCompare(String(x.posted||''))||String(x.name||'').localeCompare(String(y.name||''),undefined,{numeric:true}));
+      lv.append(h('div',{style:'padding:6px 10px 14px 46px;border-bottom:1px solid var(--line);background:var(--band)'},
+        list.length?h('table',{class:'simple',style:'width:auto;min-width:900px'},h('thead',null,h('tr',null,['Variation ID · '+list.length,'Status','Vertical','Variation','Accounts',kind==='stories'?null:'Trial Reels','Assigned to'].filter(Boolean).map(x=>h('th',null,x)))),
+          h('tbody',null,list.map(v=>h('tr',null,h('td',null,h('button',{type:'button',class:'plain',style:'text-align:left;font-weight:600',onclick:()=>vcfg&&recordModal(vcfg,v,false)},v.name||v.id)),h('td',null,chip(v.vstatus,'var_status')||v.vstatus||'—'),h('td',null,v.vertical?chip(v.vertical,'vertical'):'—'),
+            h('td',null,varFile(v)?h('button',{type:'button',class:'plain',onclick:()=>playVar(v),'aria-label':'Ver vídeo de '+(v.name||'')},thumb(v)):h('span',{class:'muted'},'—')),h('td',null,arr(v.accounts).map(l=>accChip(l))),kind==='stories'?null:h('td',null,v.trial_reels?'✓':'—'),h('td',null,assigned(v))))))
+        :h('div',{class:'muted'},'Sin variaciones con estos filtros.')))}});
+  root.append(lv,h('div',{class:'foot'},h('b',null,acc.length+' cuentas'),' · doble clic en “'+dl+'” para editarlo · ▸ para ver las variaciones de cada cuenta · Days of content = aprobados ÷ daily posts'+(kind==='normal'?' · no cuenta variaciones de contenido marcado como Trial Reels ni de contenido Archived / Not Done':'')))}
 
 /* ---------- daily posting tasks (today only, deterministic ids) ---------- */
 function delQuiet(c,id){S.d[c].delete(id);if(S.mode==='sb')S.sb.from('docs').delete().eq('col',c).eq('id',String(id)).then(()=>{});else if(S.mode==='local')saveLocal(c)}
