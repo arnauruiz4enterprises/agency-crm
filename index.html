@@ -498,7 +498,7 @@ const sbRec=(c,row)=>({col:c,id:String(row.id),model:c==='models'?String(row.id)
 function sbPut(c,row){const p=c+'/'+row.id;const rec=sbRec(c,row);
   S.q[p]=(S.q[p]||Promise.resolve()).then(async()=>{const {error}=S.role==='model'?await S.sb.from('docs').insert(rec):await S.sb.from('docs').upsert(rec);if(error)toast('No se pudo guardar: '+error.message)}).catch(()=>toast('No se pudo guardar. Revisa tu conexión.'));return S.q[p]}
 async function sbLoad(){const all=[];
-  for(let from=0;from<200000;from+=1000){const {data,error}=await S.sb.from('docs').select('col,id,data').order('col').order('id').range(from,from+999);if(error){S.loaded=true;S.loadErr=error.message;rerender();return}all.push(...data);if(data.length<1000)break}
+  for(let from=0;from<200000;from+=1000){let q=S.sb.from('docs').select('col,id,data');if(S.role==='model')q=q.or('col.neq.content,data->>status.not.in.(Posted,Semi-Posted,Archived,"Not Done",Template)');const {data,error}=await q.order('col').order('id').range(from,from+999);if(error){S.loaded=true;S.loadErr=error.message;rerender();return}all.push(...data);if(data.length<1000)break}
   COLS.forEach(c=>S.d[c]=new Map());all.forEach(r=>{if(S.d[r.col])S.d[r.col].set(r.id,{...r.data,id:r.id})});S.loaded=true;rerender()}
 function sbSubscribe(){try{S.sb.channel('docs-live').on('postgres_changes',{event:'*',schema:'public',table:'docs'},p=>{if(p.eventType==='DELETE'){const o=p.old||{};if(S.d[o.col])S.d[o.col].delete(o.id)}else{const r=p.new||{};if(S.d[r.col])S.d[r.col].set(r.id,{...(r.data||{}),id:r.id})}rerender()}).subscribe()}catch(e){}}
 async function initStore(){
@@ -567,9 +567,10 @@ const PAGES={
  knowledge:{title:'Knowledge Library',sub:'SOPs y documentos internos',icon:'📚',global:true,view:'list',cfg:{col:'knowledge',noun:'documents',primary:'name',global:true,cols:knowledgeCols,filters:['category','doc_type'],group:['category'],sort:{k:'order',dir:1},newRow:()=>({name:'New document'})}},
  tutorials:{title:'Tutorials',sub:'videos shown in the model app',icon:'🎓',global:true,view:'list',cfg:{col:'tutorials',noun:'tutorials',primary:'name',global:true,cols:[C('url','Video link','url',{w:320}),C('description','Description','long',{w:320}),C('order','Order','number',{w:80})],group:[],sort:{k:'order',dir:1},newRow:()=>({name:'New tutorial'})}},
  modelapp:{title:'Model App',sub:'',icon:'📱',global:true,view:'modelapp'},
- access:{title:'Accesos',sub:'logins de tu equipo y tus modelos',icon:'🔑',global:true,view:'access'}
+ access:{title:'Accesos',sub:'logins de tu equipo y tus modelos',icon:'🔑',global:true,view:'access'},
+ kimport:{title:'Importar de Kalista',sub:'trae el contenido y las variaciones de una modelo desde los CSV de Kalista',icon:'⬇️',global:true,view:'kimport'}
 };
-const NAV=[['🚀 CD Interface',['plan','accounts','pipeline','content','analytics','variations','inspo','templates']],['📲 Posting',['posting','funneling']],['🧿 Edits MGMT',['editsmgmt']],['✅ Projects & Tasks',['projects','tasks']],['💃 Model Allocation',['creators','access']],['📚 Knowledge Library',['knowledge']],['📱 Apps de modelos',['modelapp','tutorials']]];
+const NAV=[['🚀 CD Interface',['plan','accounts','pipeline','content','analytics','variations','inspo','templates']],['📲 Posting',['posting','funneling']],['🧿 Edits MGMT',['editsmgmt']],['✅ Projects & Tasks',['projects','tasks']],['💃 Model Allocation',['creators','access','kimport']],['📚 Knowledge Library',['knowledge']],['📱 Apps de modelos',['modelapp','tutorials']]];
 const SOON=[];
 
 /* ---------- popover / modal ---------- */
@@ -620,10 +621,11 @@ const POST_TYPES=['Post','Post Reel','Post Story','Story'];const isDone=t=>!!t&&
 const kindOf=t=>(t.action_type==='Post Story'||t.action_type==='Story')?'SR':t.trial_reels?'TR':'NR';
 const KIND={NR:['Normal Reel','Post Reel',false],TR:['Trial Reel','Post Reel',true],SR:['Stories','Post Story',false]};
 const today=()=>iso(new Date());
-function ensureVars(r){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status))return 0;let n=0;
-  arr(r.accounts).forEach((l,i)=>{const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id))return;n++;
+function ensureVars(r,idx){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status)||r.k_src==='kalista-csv')return 0;let n=0;
+  const have=idx?(idx.get(r.content_id)||new Set()):new Set(rows('variations').filter(v=>v.content_id&&v.content_id===r.content_id).map(v=>v.account_id));
+  arr(r.accounts).forEach((l,i)=>{const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id)||have.has(a.id))return;n++;
     put('variations',id,{name:'Variation-'+(i+1)+'-'+(r.content_id||'')+(r.vertical?'-'+r.vertical:''),model:r.model,content_ref:r.id,content_id:r.content_id,accounts:[accLabel(a)],account_id:a.id,platform:a.platform,type:r.type,vertical:r.vertical||null,trial_reels:!!r.trial_reels,instructions:r.instructions||null,tags:arr(r.tags),edited_drive:r.edited_drive||null,file:null,vstatus:'Approved',seen:'Not Seen',removed:'Not Removed'},true)});return n}
-function syncAllVars(){let n=0;rows('content').forEach(r=>{n+=ensureVars(r)});if(n)rerender()}
+function syncAllVars(){let n=0;const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});if(n)rerender()}
 let inHook=false;
 function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHook=true;try{
   if(c==='content')ensureVars(row);
@@ -1686,6 +1688,116 @@ function settingsModal(){const s=settings();const name=h('input',{id:'set_name',
     h('div',{class:'f'},h('label',null,'Storage'),h('div',{class:'muted'},S.mode==='sb'?'Saved to your Supabase database.':S.mode==='db'?'Saved to this page’s shared database.':'Saved in this browser only.')),
     h('div',{class:'acts'},h('span'),h('button',{type:'button',class:'btn-acc',onclick:()=>{put('settings','main',{...settings(),agency:name.value.trim(),me:me.value.trim()});closeModal()}},'Save'))))}
 
+/* ---------- Kalista CSV import (admin) ---------- */
+function kiParseCSV(text){text=String(text||'').replace(/^﻿/,'');const out=[];let row=[],f='',q=false,i=0;const n=text.length;
+  while(i<n){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i+=2;continue}q=false;i++;continue}f+=c;i++;continue}
+    if(c==='"'&&f===''){q=true;i++;continue}
+    if(c===','){row.push(f);f='';i++;continue}
+    if(c==='\r'){i++;continue}
+    if(c==='\n'){row.push(f);out.push(row);row=[];f='';i++;continue}
+    f+=c;i++}
+  if(f!==''||row.length){row.push(f);out.push(row)}
+  const hd=(out.shift()||[]).map(x=>x.trim());return out.filter(r=>r.some(x=>x!=='')).map(r=>{const o={};hd.forEach((k,j)=>o[k]=r[j]==null?'':r[j]);return o})}
+const kiList=v=>String(v||'').split(/;\s*/).map(x=>x.trim()).filter(Boolean);
+const kiSlug=v=>String(v||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+const KI_PLAT={instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',twitter:'Twitter',x:'Twitter',threads:'Threads',twitch:'Twitch','facebook page':'Facebook Page','facebook profile':'Facebook Profile'};
+const kiPlat=p=>KI_PLAT[String(p||'').trim().toLowerCase()]||(p||null);
+function kiRedact(t){if(!t)return t;return String(t).replace(/\b(password|passw|contrase(?:ñ|n)a|contra|pass|backup)\b\s*[:=]\s*\S+/gi,(m,k)=>k+': [eliminado por seguridad]')}
+function kiToMd(h){if(!h)return h;h=String(h);if(!/<(div|p|br|span|ul|ol|li|a|b|i|strong|em|h[1-6]|table|font)\b[^>]*>/i.test(h))return h;if(typeof DOMParser==='undefined')return h;
+  const d=new DOMParser().parseFromString('<div id="r">'+h.replace(/<(https?:\/\/[^\s<>]+)>/g,'&lt;$1&gt;')+'</div>','text/html');return htmlMd(d.getElementById('r'))}
+/* ctx: {model, content:[], variations:[], accounts:[], calc:fn, label:fn} */
+function kiPlan(C,V,ctx){const M=ctx.model;const P={content:[],vars:[],relink:[],skip:{exist:0,proposal:0,modelProp:0,varExist:0},diffs:[],unknownAcc:new Set(),byStatus:{},byType:{},varByStatus:{},redacted:[]};
+  const accs=ctx.accounts;const base=a=>String(a.name||'').replace(/\s*\([^)]*\)\s*$/,'').trim().toLowerCase();
+  const findAcc=(name,plats)=>{const n=String(name||'').trim().toLowerCase();if(!n)return [];let c=accs.filter(a=>String(a.name||'').trim().toLowerCase()===n||base(a)===n);
+    if(c.length>1&&plats&&plats.length){const f=c.filter(a=>plats.includes(a.platform));if(f.length)c=f}return c};
+  const exC=ctx.content.filter(r=>r.model===M.id);const exByCid=new Map();exC.forEach(r=>{const k=r.content_id||'';if(!exByCid.has(k))exByCid.set(k,[]);exByCid.get(k).push(r)});
+  const usedIds=new Set(ctx.content.map(r=>String(r.id)));const nid=(pre,s)=>{let id=pre+s,i=2;while(usedIds.has(id))id=pre+s+'-'+(i++);usedIds.add(id);return id};
+  const cidRows=new Map();/* content_id -> [crm rows (existing+new)] */exByCid.forEach((v,k)=>cidRows.set(k,[...v]));
+  const varOwner=new Map();/* variation name -> crm content id */
+  exC.forEach(r=>(Array.isArray(r.k_variations)?r.k_variations:[]).forEach(n=>varOwner.set(String(n),r.id)));
+  /* pair CSV rows with CRM rows that already exist: exact status first, then leftovers in order */
+  const match=new Map();const consumed=new Set();const isC=r=>!(r['Record Kind']&&r['Record Kind']!=='Content')&&(r['Status']||'').trim()!=='Proposal';
+  const grp=new Map();C.forEach((r,i)=>{if(!isC(r))return;const k=(r['Content ID']||'').trim();if(!grp.has(k))grp.set(k,[]);grp.get(k).push(i)});
+  grp.forEach((idx,k)=>{const ex=exByCid.get(k)||[];if(!ex.length)return;const left=[];
+    idx.forEach(i=>{const st=(C[i]['Status']||'').trim();const e=ex.find(x=>!consumed.has(x.id)&&(x.status||'')===st);if(e){consumed.add(e.id);match.set(i,e)}else left.push(i)});
+    left.forEach(i=>{const e=ex.find(x=>!consumed.has(x.id));if(e){consumed.add(e.id);match.set(i,e)}})});
+  C.forEach((r,i)=>{if(r['Record Kind']&&r['Record Kind']!=='Content'){P.skip.modelProp++;return}
+    const st=(r['Status']||'').trim();if(st==='Proposal'){P.skip.proposal++;return}
+    const cid=(r['Content ID']||'').trim();const same=match.get(i);
+    if(same){P.skip.exist++;if((same.status||'')!==st)P.diffs.push({id:same.id,cid,crm:same.status||'—',kalista:st||'—'});
+      kiList(r['Variations Posted']).forEach(n=>varOwner.set(n,same.id));return}
+    const m=/^(.*)-(.+)-(\d+)$/.exec(cid);const type=(r['Content Type']||'').trim()||(m?m[2]:null);const num=m?+m[3]:null;if(!m&&!type){P.skip.empty=(P.skip.empty||0)+1;return}
+    const plats=kiList(r['Account Platforms']).map(kiPlat);const labels=[];
+    kiList(r['Accounts']).forEach(nm=>{const f=findAcc(nm,plats);if(f.length)f.forEach(a=>{const l=ctx.label(a);if(!labels.includes(l))labels.push(l)});else{P.unknownAcc.add(nm);if(!labels.includes(nm))labels.push(nm)}});
+    const raw=r['Instructions (Model Proposal: Proposal)']||'';let ins=kiToMd(raw);const red=kiRedact(ins);if(red!==ins)P.redacted.push(cid);ins=red;
+    const names=kiList(r['Variations Posted']);const igs=kiList(r['All IG Links (from Account Actions)']);
+    const fl=v=>kiList(v).map(name=>({name}));
+    const d={model:M.id,content_id:cid,sid:num,type,status:st||null,proposed:(r['Proposed Reel Status']||'').trim()||null,vertical:(r['Vertical']||'').trim()||null,country:(r['Country']||'').trim()||null,accounts:labels,
+      instructions:ins||null,due_date:(r['Due Date']||'').trim()||null,raw_drive:(r['Raw Content (Drive Link) (Model Proposal: Drive Link)']||'').trim()||null,edited_drive:(r['Edited Content (Drive Link)']||'').trim()||null,
+      k_raw_files:fl(r['Raw Content (Attachment) file names (Model Proposal: Attachments)']),k_raw_count:+r['Raw file count']||0,k_edited_files:fl(r['Edited Content (Attachment) file names']),k_edited_count:+r['Edited file count']||0,
+      variations_posted:names.length||null,k_variations:names,ig_link:(r['IG Link (from Account Actions) - first, as the page shows']||'').trim()||igs[0]||null,k_ig_links:igs.length>1?igs:[],
+      feedback:(r['Feedback']||'').trim()||null,model_rating:(r['Model Rating']||'').trim()||null,model_feedback:(r['Model Feedback']||'').trim()||null,justification:(r['Justification']||'').trim()||null,
+      tags:kiList(r['Tags']),model_tags:kiList(r['Model Tags']),content_plan:kiList(r['Content Plan']),reference_link:(r['Reference Link']||'').trim()||null,trial_reels:/^true$/i.test(r['Trial Reels']||''),
+      concept:(r['Concept']||'').trim()||null,k_dd_from:(r['Doubled Down From (variation)']||'').trim()||null,created:(r['Created']||'').trim()||null,recorded_date:(r['Recorded Date']||'').trim()||null,posted_date:(r['Posted Date']||'').trim()||null,
+      k_tabs:(r['CD Content Tab(s)']||'').trim()||null,k_src:'kalista-csv'};
+    Object.keys(d).forEach(k=>{if(d[k]===null||(Array.isArray(d[k])&&!d[k].length&&k!=='accounts'))delete d[k]});
+    const q=ctx.calc(d);d.reps_needed=q.reps;d.files_needed=q.files;
+    d.id=nid('kh-',kiSlug(type||'x')+'-'+(num==null?'x':num));P.content.push(d);
+    if(!cidRows.has(cid))cidRows.set(cid,[]);cidRows.get(cid).push(d);names.forEach(n=>varOwner.set(n,d.id));
+    P.byStatus[st||'(sin estado)']=(P.byStatus[st||'(sin estado)']||0)+1;P.byType[type||'?']=(P.byType[type||'?']||0)+1});
+  const ownerOf=(name,cid)=>{if(varOwner.has(name))return varOwner.get(name);const L=cidRows.get(cid)||[];if(!L.length)return null;const pref=L.find(x=>['Posted','Semi-Posted'].includes(x.status))||L.find(x=>x.status==='Approved')||L[0];return pref.id};
+  const typeOf=new Map();[...exC,...P.content].forEach(r=>typeOf.set(r.id,r.type));
+  const exVar=new Map();ctx.variations.forEach(v=>{if(v.name)exVar.set(String(v.name),v)});const vIds=new Set(ctx.variations.map(v=>String(v.id)));
+  const vid=s=>{let id='kvh-'+s,i=2;while(vIds.has(id))id='kvh-'+s+'-'+(i++);vIds.add(id);return id};
+  const RM={'manually removed because flagged':'Removed by us','manually removed (others)':'Removed by us','ig automatically removed':'Removed by IG'};
+  V.forEach(v=>{const name=(v['Variation ID']||'').trim();const cid=(v['Content ID']||'').trim();const own=ownerOf(name,cid);
+    const ex=exVar.get(name);if(ex){P.skip.varExist++;if(!ex.content_ref&&own)P.relink.push({...ex,content_ref:own});return}
+    const plat=kiPlat(v['Platform']);const labels=[];let accId=null;
+    kiList(v['Accounts']).forEach(nm=>{const f=findAcc(nm,plat?[plat]:[]);if(f.length){const a=f[0];if(!accId)accId=a.id;const l=ctx.label(a);if(!labels.includes(l))labels.push(l)}else{P.unknownAcc.add(nm);labels.push(nm)}});
+    const vn=/^Variation-(\d+)-/.exec(name);const why=(v['Removed? Why?']||'').trim();const scr=(v['Removed? Scraper']||'').trim().toUpperCase();
+    const removed=why?(RM[why.toLowerCase()]||'Removed by us'):scr==='YES'?'Removed by IG':'Not Removed';
+    const st=(v['Status']||'').trim()||'Posted';
+    const d={model:M.id,name,vnum:vn?+vn[1]:null,content_id:cid,content_ref:own||null,type:(own&&typeOf.get(own))||(/^.*-(.+)-\d+$/.exec(cid)||[])[1]||null,vertical:(v['Vertical (from Content)']||'').trim()||null,
+      accounts:labels,account_id:accId,platform:plat||null,vstatus:st,ig_link:(v['IG Link']||'').trim()||null,views:v['Views (S)']===''?null:(+v['Views (S)']||0),posted:(v['Posted Date']||'').trim()||null,posted_at:(v['Posted At (KL time)']||'').trim()||null,
+      mode:(v['Content Type (Trial / Normal Reel)']||'').trim()||null,trial_reels:/^true$/i.test(v['Trial Reels']||''),file:(v['Edited Content (Variations Link)']||'').trim()||null,k_var_files:kiList(v['Variation file names']).map(n=>({name:n})),
+      removed,k_removed_scraper:scr||null,k_removed_why:why||null,removal_date:(v['IG Removal Date']||'').trim()||null,doubled:+v['Doubled Down (times)']||0,doubled_ids:kiList(v['Double Downs (Content IDs made from it)']),
+      k_dd_of:(v['Its content is a Double Down of (variation)']||'').trim()||null,seen:/^seen$/i.test((v['Variation Seen']||'').trim())?'Seen':'Not Seen',k_src:'kalista-csv'};
+    Object.keys(d).forEach(k=>{if(d[k]===null||(Array.isArray(d[k])&&!d[k].length&&k!=='accounts'))delete d[k]});
+    d.id=vid(kiSlug(name.replace(/^Variation-/,'v')));P.vars.push(d);P.varByStatus[st]=(P.varByStatus[st]||0)+1});
+  /* old variations still without content link */
+  const relinked=new Set(P.relink.map(v=>v.id));
+  ctx.variations.forEach(v=>{if(v.model!==M.id||v.content_ref||relinked.has(v.id))return;const own=ownerOf(String(v.name||''),v.content_id||'');if(own){P.relink.push({...v,content_ref:own});relinked.add(v.id)}});
+  P.unknownAcc=[...P.unknownAcc];return P}
+let KI={C:null,V:null,names:{},plan:null,busy:false,msg:'',done:null};
+async function kiRun(P,onp){const up=async(col,list)=>{for(let i=0;i<list.length;i+=200){const chunk=list.slice(i,i+200);let err=null;
+    for(let t=0;t<4;t++){const {error}=await S.sb.from('docs').upsert(chunk.map(r=>sbRec(col,r)));if(!error){err=null;break}err=error;await new Promise(z=>setTimeout(z,1500*(t+1)))}
+    if(err)throw new Error(err.message||String(err));chunk.forEach(r=>S.d[col].set(String(r.id),r));onp(col,Math.min(i+200,list.length),list.length)}};
+  await up('content',P.content);await up('variations',P.vars);await up('variations',P.relink)}
+function kimportView(root){const w=h('div',{class:'wrap',style:'max-width:900px'});root.append(w);
+  if(S.mode!=='sb'||S.role==='model'){w.append(h('div',{class:'empty'},'Solo un admin puede importar, desde la versión publicada.'));return}
+  const ms=rows('models');const sel=h('select',{'aria-label':'Modelo destino',onchange:e=>{KI.model=e.target.value;KI.plan=null;KI.done=null;rerender()}},ms.map(m=>h('option',{value:m.id,selected:m.id===(KI.model||st.model)},m.name)));if(!KI.model)KI.model=sel.value;
+  const fin=h('input',{type:'file',id:'ki_files',accept:'.csv,text/csv',multiple:true,onchange:async e=>{for(const f of e.target.files){const rows_=kiParseCSV(await f.text());const hd=rows_[0]||{};
+      if('Variation ID' in hd){KI.V=rows_;KI.names.V=f.name}else if('Content ID' in hd){KI.C=rows_;KI.names.C=f.name}else toast('No reconozco '+f.name)}KI.plan=null;KI.done=null;rerender()}});
+  w.append(h('h3',null,'1. Elige la modelo y los dos CSV que exporta Kalista'),
+    h('p',{class:'muted',style:'max-width:70ch'},'Kalista exporta un CSV de Content y otro de Variations. Lo que ya está en el CRM no se toca ni se duplica, las propuestas (status “Proposal”) se saltan y las contraseñas que aparezcan en las instrucciones se tapan. Puedes repetir la importación sin problema: solo añade lo que falte.'),
+    h('div',{class:'f'},h('label',null,'Modelo'),sel),
+    h('div',{class:'f'},h('label',{for:'ki_files'},'Archivos CSV'),h('div',null,fin,h('div',{class:'hint'},'Content: '+(KI.names.C?KI.names.C+' ('+KI.C.length+' filas)':'—')+' · Variations: '+(KI.names.V?KI.names.V+' ('+KI.V.length+' filas)':'—')))));
+  if(KI.C||KI.V)w.append(h('div',{class:'toolbar',style:'border:none;padding:6px 0'},h('button',{type:'button',class:'btn-acc',disabled:KI.busy,onclick:()=>{const m=S.d.models.get(KI.model);if(!m)return toast('Elige una modelo');
+      KI.plan=kiPlan(KI.C||[],KI.V||[],{model:m,content:rows('content'),variations:rows('variations'),accounts:rows('accounts').filter(a=>!a.model||a.model===m.id),calc:calcReq,label:accLabel});KI.done=null;rerender()}},'2. Revisar qué se va a importar')));
+  const P=KI.plan;if(P){const kv=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+v).join(' · ')||'—';
+    w.append(h('h3',null,'Resumen'),h('table',{class:'simple'},h('tbody',null,
+      [['Contenido nuevo',P.content.length+'  ('+kv(P.byStatus)+')'],['Por tipo',kv(P.byType)],['Contenido que ya estaba (no se toca)',P.skip.exist],['Propuestas saltadas',P.skip.proposal+(P.skip.modelProp?' + '+P.skip.modelProp+' propuestas de la modelo':'')],
+       ['Variaciones nuevas',P.vars.length+'  ('+kv(P.varByStatus)+')'],['Variaciones que ya estaban',P.skip.varExist],['Variaciones que se enlazan a su contenido',P.relink.length],
+       ['Cuentas no encontradas en el CRM',P.unknownAcc.length?P.unknownAcc.join(', '):'ninguna'],['Contraseñas tapadas',P.redacted.length?P.redacted.join(', '):'ninguna'],
+       ['Cambios de estado en Kalista (no se aplican)',P.diffs.length?P.diffs.map(d=>d.cid+': CRM '+d.crm+' → Kalista '+d.kalista).join(' · '):'ninguno']].map(([k,v])=>h('tr',null,h('th',{style:'text-align:left;white-space:nowrap;padding-right:14px'},k),h('td',null,String(v)))))));
+    const total=P.content.length+P.vars.length+P.relink.length;
+    if(!KI.done)w.append(h('div',{class:'toolbar',style:'border:none;padding:10px 0'},h('button',{type:'button',class:'btn-acc',disabled:KI.busy||!total,onclick:async()=>{if(KI.busy)return;KI.busy=true;KI.msg='Empezando…';rerender();
+        try{await kiRun(P,(c,n,t)=>{KI.msg=(c==='content'?'Contenido':'Variaciones')+': '+n+' / '+t;const el=document.getElementById('ki_msg');if(el)el.textContent=KI.msg});KI.done={ok:true,n:total};toast('Importación terminada')}
+        catch(err){KI.done={ok:false,err:err.message};toast('La importación se paró: '+err.message)}
+        KI.busy=false;rerender()}},KI.busy?'Importando…':'3. Importar '+total+' registros'),h('span',{id:'ki_msg',class:'muted',style:'margin-left:10px'},KI.busy?KI.msg:'')));
+    if(KI.done)w.append(h('p',{class:KI.done.ok?'':'muted',style:'font-weight:600'},KI.done.ok?'✓ Importados '+KI.done.n+' registros. Si vuelves a pulsar “Revisar”, debería salir 0 nuevo.':'La importación se paró: '+KI.done.err+'. Puedes volver a pulsar “Revisar” e “Importar”: seguirá por donde iba sin duplicar.'))}}
+
 /* ---------- shell ---------- */
 function parseHash(){const x=(location.hash||'').replace('#','');if(!x)return;const p=Object.keys(PAGES).sort((a,b)=>b.length-a.length).find(k=>x===k||x.startsWith(k+'-'));if(p){st.route=p;st.tab=x.length>p.length?x.slice(p.length+1):null}}
 function go(route,tab){closePop();if(route==='modelapp'&&st.route!=='modelapp')Object.assign(ma,{screen:'home',extra:null,f:{},reset:true});const hsh=route+(tab?'-'+tab:'');if(location.hash!=='#'+hsh){try{location.hash=hsh}catch(e){}}st.route=route;st.tab=tab||null;document.body.classList.remove('open');$('#view').scrollTop=0;render()}
@@ -1705,7 +1817,7 @@ function render(){
   const tabs=$('#tabs');tabs.replaceChildren();let tab=null;if(page.tabs){tab=page.tabs.find(t=>t.id===st.tab)||page.tabs[0];page.tabs.forEach(t=>tabs.append(h('a',{href:'#'+st.route+'-'+t.id,class:t===tab?'on':'',onclick:e=>{e.preventDefault();go(st.route,t.id)}},t.dot?h('span',{class:'dot',style:'background:'+t.dot}):null,t.label)));tabs.style.display='flex'}else tabs.style.display='none';
   const v=$('#view');const keep=v.scrollTop,keepX=v.scrollLeft;v.replaceChildren();v.style.setProperty('--tbh','0px');if(S.role!=='model'&&['pipeline','plan','content'].includes(st.route)){const ab=alertBar();if(ab)v.append(ab)}const node=tab||page;const key=st.route+'/'+(tab?tab.id:'');
   if(S.slow)v.append(h('div',{class:'empty',style:'padding:8px 14px'},'The database is taking long to answer. Data shown may be incomplete.'));
-  document.body.classList.toggle('mview',node.view==='modelapp');if(node.view==='modelapp')modelApp(v);else if(node.view==='access')accessView(v);else if(node.view==='list')listView(node.cfg,key,v);else if(node.view==='plan')planView(v);else if(node.view==='notes')notesView(v);else if(node.view==='calendar')calendarView(v);else if(node.view==='pipeline')pipelineView(node,v);else if(node.view==='assign')assignView(v);else if(node.view==='analytics')analyticsView(node,v);else if(node.view==='linkpages')linkPagesView(v);else if(node.view==='posting')postingView(node,v);else if(node.view==='board')boardView(node,v);
+  document.body.classList.toggle('mview',node.view==='modelapp');if(node.view==='modelapp')modelApp(v);else if(node.view==='access')accessView(v);else if(node.view==='kimport')kimportView(v);else if(node.view==='list')listView(node.cfg,key,v);else if(node.view==='plan')planView(v);else if(node.view==='notes')notesView(v);else if(node.view==='calendar')calendarView(v);else if(node.view==='pipeline')pipelineView(node,v);else if(node.view==='assign')assignView(v);else if(node.view==='analytics')analyticsView(node,v);else if(node.view==='linkpages')linkPagesView(v);else if(node.view==='posting')postingView(node,v);else if(node.view==='board')boardView(node,v);
   if(node.view==='modelapp'&&ma.reset){ma.reset=false;v.scrollTop=ma.restoreY||0;ma.restoreY=0}else{v.scrollTop=keep;v.scrollLeft=keepX}}
 $('#searchBtn').addEventListener('click',()=>{if(S.role!=='model')openSearch()});
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'&&S.role!=='model'){e.preventDefault();openSearch()}});
