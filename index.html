@@ -1815,6 +1815,7 @@ function newAccessForm(){const nmI=h('input',{id:'na_name',placeholder:'Nombre y
       const uid=data&&data.user&&data.user.id;if(!uid||(data.user.identities&&data.user.identities.length===0))throw new Error('Ese email ya tiene una cuenta.');
       let ok=false;for(let i=0;i<6&&!ok;i++){const {data:u,error:e2}=await S.sb.from('profiles').update({display_name:nmI.value.trim()||null,role:role.value,model_id:role.value==='model'?mod.value:null}).eq('user_id',uid).select();if(e2)throw e2;ok=u&&u.length>0;if(!ok)await new Promise(z=>setTimeout(z,800))}
       if(!ok)throw new Error('La cuenta se creó pero no se pudo asignar el rol. Asígnalo en la lista.');
+      await S.sb.from('access_secrets').upsert({user_id:uid,password:pass,set_at:new Date().toISOString()});
       try{await tmp.auth.signOut()}catch(_){}
       out.textContent=(data.session?'Acceso creado. Datos para enviar: ':'Acceso creado, pero la persona debe confirmar su email antes de entrar. Datos: ')+location.origin+' · '+email+' · '+pass;
       em.value='';pw.value='';nmI.value='';accRows=null;S.sb.from('profiles').select('user_id,email,display_name,role').then(({data})=>{S.people=data||[]});setTimeout(rerender,4000)
@@ -1833,12 +1834,14 @@ function setPwDlg(p){const gen=()=>{const c='abcdefghijkmnpqrstuvwxyzABCDEFGHJKL
   const btn=h('button',{type:'button',class:'btn-acc',onclick:async()=>{const v=pw.value.trim();if(v.length<8){out.textContent='Mínimo 8 caracteres.';return}btn.disabled=true;
     const {error}=await S.sb.rpc('admin_set_password',{p_user:p.user_id,p_password:v});btn.disabled=false;
     if(error){out.textContent='No se pudo cambiar: '+error.message;return}
-    const msg=location.origin+' · '+p.email+' · '+v;out.replaceChildren('Contraseña cambiada y email confirmado. Datos para enviar: ',h('b',null,msg),' ',h('button',{type:'button',onclick:()=>{navigator.clipboard&&navigator.clipboard.writeText(msg);toast('Copiado')}},'Copiar'));btn.textContent='Hecho';btn.disabled=true}},'Guardar contraseña');
+    const msg=location.origin+' · '+p.email+' · '+v;out.replaceChildren('Contraseña cambiada y email confirmado. Datos para enviar: ',h('b',null,msg),' ',h('button',{type:'button',onclick:()=>{navigator.clipboard&&navigator.clipboard.writeText(msg);toast('Copiado')}},'Copiar'));btn.textContent='Hecho';btn.disabled=true;accRows=null;rerender()}},'Guardar contraseña');
   openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,'Nueva contraseña',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
-    h('p',{class:'muted'},'Para ',h('b',null,p.email||''),'. La anterior deja de funcionar. Las contraseñas no se pueden ver después: cópiala y envíasela ahora.'),
+    h('p',{class:'muted'},'Para ',h('b',null,p.email||''),'. La anterior deja de funcionar. La nueva queda guardada en la columna Contraseña (solo la ven los admins).'),
     h('div',{class:'f'},h('label',{for:'np_pw'},'Contraseña'),h('div',{style:'display:flex;gap:6px'},pw,h('button',{type:'button',onclick:()=>{pw.value=gen()}},'Generar'))),
     out,h('div',{class:'acts'},h('span'),btn)));setTimeout(()=>pw.select(),0)}
-async function loadAccess(){const {data,error}=await S.sb.from('profiles').select('*').order('created_at');accRows=error?{err:error.message}:(data||[]);rerender()}
+let accPw={};async function loadAccess(){const {data,error}=await S.sb.from('profiles').select('*').order('created_at');const sec=await S.sb.from('access_secrets').select('user_id,password,set_at');accPw={};(sec.data||[]).forEach(x=>accPw[x.user_id]=x);accRows=error?{err:error.message}:(data||[]);rerender()}
+function pwCell(p){const x=accPw[p.user_id];if(!x)return h('span',{class:'muted',title:'No guardada: se creó antes de este cambio o la persona la cambió ella misma. Usa “Nueva contraseña”.'},'— no guardada');let shown=false;const t=h('code',null,'••••••••');
+  return h('span',{style:'display:inline-flex;gap:6px;align-items:center'},t,h('button',{type:'button',class:'plain','aria-label':'Mostrar u ocultar contraseña',onclick:e=>{shown=!shown;t.textContent=shown?x.password:'••••••••';e.currentTarget.textContent=shown?'🙈':'👁'}},'👁'),h('button',{type:'button',class:'plain','aria-label':'Copiar contraseña',onclick:()=>{navigator.clipboard&&navigator.clipboard.writeText(x.password);toast('Contraseña copiada')}},'⧉'))}
 function accessView(root){
   if(!S.sb){root.append(h('div',{class:'empty'},'Los accesos se gestionan en la versión publicada en Vercel.'));return}
   if(!accRows){root.append(h('div',{class:'empty'},'Cargando…'));loadAccess();return}
@@ -1848,11 +1851,11 @@ function accessView(root){
     const role=h('select',{'aria-label':'Rol de '+(p.email||''),disabled:isMe},['model','admin'].map(r=>h('option',{value:r,selected:p.role===r},r==='admin'?'Admin (todo el CRM)':'Modelo (solo su app)')));
     const mod=h('select',{'aria-label':'Creadora de '+(p.email||'')},h('option',{value:''},'— sin asignar —'),rows('models').map(m=>h('option',{value:m.id,selected:p.model_id===m.id},m.name)));
     const nm=h('input',{value:p.display_name||'',placeholder:'Nombre y apellido','aria-label':'Nombre de '+(p.email||'')});
-    body.append(h('tr',null,h('td',null,p.email||'—',isMe?h('span',{class:'muted'},' (tú)'):null),h('td',null,nm),h('td',null,role),h('td',null,mod),h('td',null,h('button',{type:'button',class:'btn-acc',onclick:async()=>{const {error}=await S.sb.from('profiles').update({display_name:nm.value.trim()||null,role:role.value,model_id:mod.value||null}).eq('user_id',p.user_id);if(error)toast('No se pudo guardar: '+error.message);else{toast('Acceso guardado');accRows=null;S.sb.from('profiles').select('user_id,email,display_name,role').then(({data})=>{S.people=data||[]});rerender()}}},'Guardar'),' ',isMe?null:h('button',{type:'button',title:'Poner una contraseña nueva a esta persona',onclick:()=>setPwDlg(p)},'🔑 Nueva contraseña'))))});
+    body.append(h('tr',null,h('td',null,p.email||'—',isMe?h('span',{class:'muted'},' (tú)'):null),h('td',null,nm),h('td',null,isMe?h('span',{class:'muted'},'—'):pwCell(p)),h('td',null,role),h('td',null,mod),h('td',null,h('button',{type:'button',class:'btn-acc',onclick:async()=>{const {error}=await S.sb.from('profiles').update({display_name:nm.value.trim()||null,role:role.value,model_id:mod.value||null}).eq('user_id',p.user_id);if(error)toast('No se pudo guardar: '+error.message);else{toast('Acceso guardado');accRows=null;S.sb.from('profiles').select('user_id,email,display_name,role').then(({data})=>{S.people=data||[]});rerender()}}},'Guardar'),' ',isMe?null:h('button',{type:'button',title:'Poner una contraseña nueva a esta persona',onclick:()=>setPwDlg(p)},'🔑 Nueva contraseña'))))});
   root.append(h('div',{class:'wrap',style:'max-width:none'},
     newAccessForm(),
-    h('p',{class:'muted',style:'max-width:70ch'},'Solo tú creas las cuentas. Rellena email, contraseña y creadora, pulsa “Crear acceso” y pásale esos datos a la persona. Una Modelo solo ve su app y el contenido de la creadora asignada.'),
-    h('div',{style:'overflow-x:auto'},h('table',{class:'simple'},h('thead',null,h('tr',null,h('th',null,'Email'),h('th',null,'Nombre'),h('th',null,'Rol'),h('th',null,'Creadora'),h('th',null,''))),body)),
+    h('p',{class:'muted',style:'max-width:70ch'},'Solo tú creas las cuentas. Rellena email, contraseña y creadora, pulsa “Crear acceso” y pásale esos datos a la persona. Una Modelo solo ve su app y el contenido de la creadora asignada. Las contraseñas que pones aquí quedan visibles solo para admins; si la persona la cambia ella misma, deja de mostrarse.'),
+    h('div',{style:'overflow-x:auto'},h('table',{class:'simple'},h('thead',null,h('tr',null,h('th',null,'Email'),h('th',null,'Nombre'),h('th',null,'Contraseña'),h('th',null,'Rol'),h('th',null,'Creadora'),h('th',null,''))),body)),
     h('div',{class:'toolbar',style:'border:none;padding:10px 0'},h('button',{type:'button',onclick:()=>{accRows=null;rerender()}},'Actualizar lista'))))}
 
 /* ---------- settings + import ---------- */
