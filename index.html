@@ -1816,8 +1816,9 @@ function newAccessForm(){const nmI=h('input',{id:'na_name',placeholder:'Nombre y
       let ok=false;for(let i=0;i<6&&!ok;i++){const {data:u,error:e2}=await S.sb.from('profiles').update({display_name:nmI.value.trim()||null,role:role.value,model_id:role.value==='model'?mod.value:null}).eq('user_id',uid).select();if(e2)throw e2;ok=u&&u.length>0;if(!ok)await new Promise(z=>setTimeout(z,800))}
       if(!ok)throw new Error('La cuenta se creó pero no se pudo asignar el rol. Asígnalo en la lista.');
       await S.sb.from('access_secrets').upsert({user_id:uid,password:pass,set_at:new Date().toISOString()});
+      const cf=await S.sb.rpc('admin_set_password',{p_user:uid,p_password:pass});const confirmed=!cf.error;
       try{await tmp.auth.signOut()}catch(_){}
-      out.textContent=(data.session?'Acceso creado. Datos para enviar: ':'Acceso creado, pero la persona debe confirmar su email antes de entrar. Datos: ')+location.origin+' · '+email+' · '+pass;
+      out.textContent=(data.session||confirmed?'Acceso creado. Datos para enviar: ':'Acceso creado, pero la persona debe confirmar su email antes de entrar. Datos: ')+location.origin+' · '+email+' · '+pass;
       em.value='';pw.value='';nmI.value='';accRows=null;S.sb.from('profiles').select('user_id,email,display_name,role').then(({data})=>{S.people=data||[]});setTimeout(rerender,4000)
     }catch(x){out.textContent='No se pudo crear: '+((x&&x.message)||'error')}finally{btn.disabled=false}};
   return h('form',{class:'na-form',onsubmit:submit,style:'display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:0 0 14px;padding:12px;border:1px solid var(--line,#333);border-radius:10px'},
