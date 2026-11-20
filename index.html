@@ -859,6 +859,7 @@ function pickPop(anchor,col,cfg,current,multi,onChange){const cur=new Set(curren
   const add=((col.free||multi)&&!col.acc)?h('div',{class:'row'},h('input',{placeholder:'Nueva opción…','aria-label':'Nueva opción',onkeydown:e=>{if(e.key==='Enter'){e.preventDefault();const v=e.target.value.trim();if(!v)return;if(multi){cur.add(v);if(!opts.includes(v))opts.push(v);onChange([...cur]);e.target.value='';draw()}else{onChange([v]);closePop()}}}})):null;
   pop(anchor,[col.acc?h('div',{class:'muted',style:'padding:4px 8px;font-size:12px'},'Cuentas de '+((model()||{}).name||'la modelo')):null,opts.length>6?q:null,infoEl,box,add]);if(multi)popEl.dataset.keep='1';if(col.acc||opts.length>12)popEl.classList.add('wide');if(opts.length>6)q.focus()}
 function editCell(td,col,row,cfg){
+  if(col.pick)return col.pick(td,S.d[cfg.col].get(row.id)||row,cfg);
   if(col.t==='check'||col.ro)return;
   if(col.t==='files')return filesPop(td,col,S.d[cfg.col].get(row.id)||row,cfg);
   if(col.t==='long')return longPop(td,col,row,cfg);
@@ -1011,7 +1012,7 @@ function listView(cfg,key,root){
     const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);document.body.classList.remove('resizing');h0.classList.remove('on');soft()};
     document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up)},ondblclick:()=>{const w={...(vs.widths||{})};delete w[k];vs.widths=w;soft()}});
   const vis=data.slice(0,vs.limit).map(r=>r.id);const allOn=vis.length&&vis.every(id=>vs.sel.has(id));
-  lv.append(h('div',{class:'lhead'},h('div',{class:'selc'},h('input',{type:'checkbox','aria-label':'Seleccionar todos',checked:!!allOn,onchange:e=>{vis.forEach(id=>e.target.checked?vs.sel.add(id):vs.sel.delete(id));rerender()}})),h('div',{title:pc.l},h('span',{class:'hl'},pc.l),rsz('_p',cfg.pw||260)),cfg.cols.map(c=>h('div',{title:c.l},h('span',{class:'hl'},c.l),rsz(c.k,c.w||140)))));
+  lv.append(h('div',{class:'lhead'},h('div',{class:'selc'},h('input',{type:'checkbox','aria-label':'Seleccionar todos',checked:!!allOn,onchange:e=>{vis.forEach(id=>e.target.checked?vs.sel.add(id):vs.sel.delete(id));rerender()}})),h('div',{title:pc.l},h('span',{class:'hl'},pc.l),rsz('_p',cfg.pw||260)),cfg.cols.map(c=>h('div',{title:c.ro?'Solo lectura':c.l},h('span',{class:'hl'},(c.ro?'🔒 ':'')+c.l),rsz(c.k,c.w||140)))));
   let shown=0;const sums=cfg.cols.filter(c=>c.sum);
   const drawRow=r=>{if(shown>=vs.limit)return;shown++;const row=h('div',{class:'lrow'+(vs.sel.has(r.id)?' picked':'')+(st.editRow===r.id?' editing':''),oncontextmenu:e=>{const cd=e.target.closest('.cell[data-k]');rowMenu(e,cfg,r,cd?cfg.cols.find(c=>c.k===cd.dataset.k):null,vs)}},h('div',{class:'cell selc'},h('input',{type:'checkbox','aria-label':'Seleccionar '+(r[cfg.primary]||''),checked:vs.sel.has(r.id),onchange:e=>{e.target.checked?vs.sel.add(r.id):vs.sel.delete(r.id);rerender()}})),h('div',{class:'t'},h('span',{class:'nm'},cfg.col==='accounts'?platIcon(r.platform):null,h('span',null,r[cfg.primary]||'(untitled)')),h('button',{type:'button','aria-label':'Expand record',onclick:()=>recordModal(cfg,r,false)},'⤢')),
       cfg.cols.map(c=>{const isCur=st.cur&&st.cur.key===key&&st.cur.id===r.id&&st.cur.k===c.k;const td=h('div',{class:'cell'+(c.ro?' ro':'')+(isCur?' cur':''),'data-k':c.k,'data-e':c.ro?null:'1',title:c.ro?null:'Doble clic (o Enter) para editar',onclick:()=>{document.querySelectorAll('.cell.cur').forEach(x=>x.classList.remove('cur'));td.classList.add('cur');st.cur={key,id:r.id,k:c.k}},ondblclick:e=>{if(e.target.tagName==='A'||e.target.tagName==='INPUT')return;editCell(td,c,r,cfg)}},h('span',{class:'lbl'},c.l),h('span',null,cellView(c,r)));return td}));lv.append(row)};
@@ -1322,7 +1323,7 @@ function playLink(v){const f=varFile(v);if(!f)return toast('Esta variación aún
 const taskAcc=(t,a)=>t.account_id?t.account_id===a.id:arr(t.account).some(l=>{const f=accFind(l);return f&&f.id===a.id});
 const postTasks=()=>rows('actions').filter(t=>POST_TYPES.includes(t.action_type));
 function assignable(a,kind,exceptTask){const taken=new Set(postTasks().filter(t=>t.variation_ref&&(!exceptTask||t.id!==exceptTask)).map(t=>t.variation_ref));
-  return rows('variations').filter(v=>(v.account_id?v.account_id===a.id:arr(v.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}))&&v.vstatus!=='Posted'&&!taken.has(v.id)&&(kind==='SR'?v.type==='Stories':v.type!=='Stories'&&(kind==='TR'?!!v.trial_reels:!v.trial_reels)))}
+  return rows('variations').filter(v=>(v.account_id?v.account_id===a.id:arr(v.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}))&&v.vstatus==='Approved'&&!taken.has(v.id)&&(()=>{const c=v.content_ref&&S.d.content.get(v.content_ref);return !(c&&!LIVE_ST.includes(c.status))&&(kind==='SR'?v.type==='Stories':v.type!=='Stories'&&(kind==='TR'?!!v.trial_reels:(!v.trial_reels&&(v.trial_set||!(c&&c.trial_reels)))))})())}
 function varPicker(a,kind,state,exceptTask){const q=h('input',{class:'search',placeholder:'Search variations…','aria-label':'Buscar variación'});const box=h('div',{class:'vpick'});
   const draw=()=>{const list=assignable(a,kind(),exceptTask);const s=q.value.trim().toLowerCase();const vis=list.filter(v=>!s||[v.name,v.vertical].join(' ').toLowerCase().includes(s));
     if(state.v&&!list.some(v=>v.id===state.v))state.v=null;
@@ -1494,7 +1495,26 @@ const pf={};
 const taskAccount=t=>(t.account_id&&S.d.accounts.get(t.account_id))||accFind(arr(t.account)[0])||null;
 const taskVia=t=>t.method||((taskAccount(t)||{}).post_via)||'Manual';
 const P_EXTRA=[C('_pfp','Profile Picture','img',{ro:1,w:90,calc:r=>(taskAccount(r)||{}).pfp||null}),C('model_name','Model (from Accounts)','text',{ro:1,w:150,calc:r=>{const m=S.d.models.get(r.model||(taskAccount(r)||{}).model);return m?m.name:''}})];
-const P_COLS={post:['account','_pfp','model_name','variation_id','variation','vertical','instructions','post_link','status','reasoning','justification','assignee','due'],health:['account','_pfp','model_name','account_health','account_status','reason_suspension','screenshots','status','reasoning','justification','assignee','due'],reach:['account','_pfp','model_name','reach_day','subs_day','revenue_day','clicks_day','followers','screenshots','status','reasoning','justification','assignee','due']};
+/* Posting (como Kalista): solo se editan Variation ID (selector), IG Link, Screenshots, Status, Reason, Extra info, Assignee y fecha */
+const pvOf=t=>t&&t.variation_ref&&S.d.variations.get(t.variation_ref)||null;
+const dashS=()=>h('span',{class:'muted'},'—');
+const POST_OV={
+  variation_id:C('variation_id','Variation ID','text',{w:220,pick:(td,t)=>postVarPick(td,t),view:t=>t.variation_id?h('span',{class:'chip g',title:'Doble clic para cambiar'},t.variation_id):h('span',{class:'muted',title:'Doble clic para elegir variación'},'— ✎')}),
+  variation:C('variation','Variation','text',{ro:1,w:90,view:t=>{const v=pvOf(t);return v&&varHas(v)?h('button',{type:'button',class:'plain vprev'+(vOff(v)?' off':''),onclick:e=>{e.stopPropagation();playVar(v)},ondblclick:e=>e.stopPropagation(),'aria-label':'Ver vídeo'},thumb(v)):dashS()}}),
+  vertical:C('vertical','Vertical','select',{o:'vertical',ro:1,w:130,calc:t=>{const v=pvOf(t);return (v&&v.vertical)||t.vertical||null}}),
+  instructions:C('instructions','Instructions','long',{ro:1,w:260,calc:t=>{const v=pvOf(t);const c=v&&srcOf(v);return t.instructions||(v&&v.instructions)||(c&&c.instructions)||null}}),
+  post_link:C('post_link','IG Link','url',{w:200}),
+  screenshot_files:C('screenshot_files','Screenshots','files',{w:170}),
+  reasoning:C('reasoning','Reason of Incomplete Task','select',{o:'reasoning',w:200}),
+  justification:C('justification','Extra Information','long',{w:220})};
+function postVarPick(td,t){if(!canEdit())return;const a=(t.account_id&&S.d.accounts.get(t.account_id))||accFind(arr(t.account)[0]);if(!a)return toast('Esta tarea no tiene cuenta');const kind=kindOf(t);
+  const q=h('input',{class:'search',placeholder:'Search…','aria-label':'Buscar variación'});const box=h('div');
+  const pick=vid=>{closePop();saveTask(S.d.actions.get(t.id)||t,a,kind,vid,t.due||today());rerender()};
+  const draw=()=>{const s=q.value.trim().toLowerCase();const L=assignable(a,kind,t.id).filter(v=>!s||[v.name,v.vertical].join(' ').toLowerCase().includes(s)).sort((x,y)=>String((srcOf(y)||{}).created||'').localeCompare(String((srcOf(x)||{}).created||''))||String(x.name).localeCompare(String(y.name),undefined,{numeric:true}));
+    box.replaceChildren(h('div',{class:'opt muted',onclick:()=>pick(null)},'— clear —'),...L.map(v=>{const c=srcOf(v);return h('div',{class:'opt'+(t.variation_ref===v.id?' on':''),style:'display:flex;gap:8px;align-items:center',onclick:()=>pick(v.id)},h('span',{class:'vprev',style:'width:28px;height:36px'},thumb(v)),h('span',{style:'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'},v.name),h('span',{class:'muted',style:'font-size:12px'},String((c&&(c.created||c.due_date))||'').slice(0,10)))}),
+      L.length?'':h('div',{class:'muted',style:'padding:8px'},'No hay variaciones aprobadas disponibles para '+a.name+'.'))};
+  q.addEventListener('input',draw);draw();pop(td,[q,box]);if(typeof popEl!=='undefined'&&popEl)popEl.classList.add('wide');setTimeout(()=>q.focus(),0)}
+const P_COLS={post:['account','_pfp','model_name','variation_id','variation','vertical','instructions','post_link','screenshot_files','status','reasoning','justification','assignee','due'],health:['account','_pfp','model_name','account_health','account_status','reason_suspension','screenshots','status','reasoning','justification','assignee','due'],reach:['account','_pfp','model_name','reach_day','subs_day','revenue_day','clicks_day','followers','screenshots','status','reasoning','justification','assignee','due']};
 function postSections(tab){const ig=tab==='ig',st_=ig||tab==='fb',w=ig?'Reel Posting':'Posting';const L=[];const two=(id,l,type,trial,kind)=>['Zernio','Manual'].forEach(v=>L.push({id:id+'-'+v[0].toLowerCase(),label:l+' ('+v+')',type,trial,via:v,kind}));
   two('reel',w,'Post Reel',false,'post');if(ig)two('trial','Trial Reel Posting','Post Reel',true,'post');if(st_)two('story','Stories Posting','Post Story',false,'post');
   L.push({id:'health',label:'Health Checking',type:'Health Check',kind:'health'});two('reach','Reach Updating','Reach Update',null,'reach');return L}
@@ -1526,7 +1546,7 @@ function postingView(node,root){const plats=PPLAT[node.id];const secs=postSectio
       multi('Assignee','has any of','assignee',[...new Set([...peopleNames(),...rows('actions').flatMap(t=>arr(t.assignee))])].map(x=>[x,x]))));
   root.append(bar);requestAnimationFrame(()=>{const v=$('#view');if(v&&bar.isConnected)v.style.setProperty('--tbh',bar.offsetHeight+'px')});
   secs.forEach(sc=>{const list=all.filter(t=>inSec(t,sc));const ids=new Set(list.map(t=>t.id));const el=h('section',{class:'psec',id:'ps-'+sc.id},h('h2',null,sc.label,h('small',null,list.length+' record'+(list.length===1?'':'s'))));root.append(el);
-    const by=Object.fromEntries([...actionsCols,...P_EXTRA].map(c=>[c.k,c]));
+    const by=Object.fromEntries([...actionsCols,...P_EXTRA].map(c=>[c.k,c]));if(sc.kind==='post')Object.assign(by,POST_OV);
     listView({col:'actions',noun:'content',primary:'name',global:true,cols:P_COLS[sc.kind].map(k=>by[k]),scope:t=>ids.has(t.id),filters:[],group:['due','model_name'],noStick:true,noFilter:true,onNew:p=>postNewDlg(sc,plats,p)},'posting/'+node.id+'/'+sc.id,el)})}
 
 /* ---------- link pages ---------- */
