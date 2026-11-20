@@ -139,6 +139,8 @@ header .sp{flex:1}
 .fed-bar{height:4px;background:var(--line);border-radius:4px;margin-top:5px;overflow:hidden}.fed-bar i{display:block;height:100%;background:var(--accent);transition:width .2s}
 .fed-err{font-size:11px;color:var(--danger);margin-top:3px}
 .fthumbs{display:inline-flex;gap:4px;align-items:center}
+.acard .th img{width:100%;height:100%;object-fit:cover}
+.vprev{display:inline-flex;align-items:center;justify-content:center;width:40px;height:52px;border-radius:6px;overflow:hidden;background:var(--hover);border:1px solid var(--line);font-size:16px;padding:0}.vprev img{width:100%;height:100%;object-fit:cover}.vprev.off{opacity:.55}
 .fthumb{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:6px;overflow:hidden;background:var(--hover);border:1px solid var(--line);flex:none;text-decoration:none}
 .fthumb img,.fthumb video{width:100%;height:100%;object-fit:cover;pointer-events:none}.fthumb .fph{font-size:16px}
 .fthumb .fplay{position:absolute;inset:auto auto 2px 2px;font-size:9px;color:#fff;background:#0009;border-radius:3px;padding:0 3px}
@@ -527,12 +529,12 @@ const accLabel=a=>[a.country,a.name,a.branding,a.status].map(x=>x||'').join('-')
 /* ---------- column sets ---------- */
 const C=(k,l,t,x)=>({k,l,t:t||'text',...(x||{})});
 const brandOf=r=>{const o=[];arr(r.accounts).forEach(l=>{const a=accFind(l);const b=a&&a.branding;if(b&&!o.includes(b))o.push(b)});return o};
-const contentCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:260}),C('_reps','Repetitions','number',{ro:1,calc:repsFor,w:110}),C('status','Status','select',{o:'content_status',w:150}),C('country','Country','select',{o:'country',w:90}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('concept','Concept','text',{w:140}),C('tags','Tags','multi',{w:150}),C('model_tags','Model Tags','multi',{w:150}),C('_branding','Branding','multi',{ro:1,calc:r=>brandOf(r),get:r=>brandOf(r),w:130}),C('content_plan','Content Plan','multi',{from:()=>planOptions(),plan:1,w:170}),C('reference_link','Reference Link','url',{w:150}),C('instructions','Instructions','long',{w:280}),C('due_date','Due Date','date',{w:120}),C('reps_dont_matter',"Model Repetitions Don't Matter",'check',{w:120}),C('trial_reels','Trial Reels','check',{w:90}),C('shots','Number of Shots','number',{w:100,sum:1}),C('attachments_model','Number of Attachments (Model)','number',{w:120,sum:1}),C('raw_files','Raw Files (Model)','files',{w:200}),C('reject_reason','Motivo de rechazo (para la modelo)','long',{w:240}),C('raw_drive','Raw Content (Drive Link)','url',{w:200}),C('edited_files','Edited Content (Attachment)','files',{w:200}),C('edited_drive','Edited Content (Drive Link)','url',{w:200}),C('variations_posted','Variations Posted','number',{w:100,sum:1}),C('ig_link','IG Link','url',{w:160}),C('model_feedback','Model Feedback','long',{w:180}),C('model_rating','Model Rating','select',{o:'rating',w:100}),C('type','Content Type','select',{o:'content_type',w:140})];
+const contentCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:260}),C('_reps','Repetitions','number',{ro:1,calc:repsFor,w:110}),C('status','Status','select',{o:'content_status',w:150}),C('country','Country','select',{o:'country',w:90}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('concept','Concept','text',{w:140}),C('tags','Tags','multi',{w:150}),C('model_tags','Model Tags','multi',{w:150}),C('_branding','Branding','multi',{ro:1,calc:r=>brandOf(r),get:r=>brandOf(r),w:130}),C('content_plan','Content Plan','multi',{from:()=>planOptions(),plan:1,w:170}),C('reference_link','Reference Link','url',{w:150}),C('instructions','Instructions','long',{w:280}),C('due_date','Due Date','date',{w:120}),C('reps_dont_matter',"Model Repetitions Don't Matter",'check',{w:120}),C('trial_reels','Trial Reels','check',{w:90}),C('shots','Number of Shots','number',{w:100,sum:1}),C('attachments_model','Number of Attachments (Model)','number',{w:120,sum:1}),C('raw_files','Raw Files (Model)','files',{w:200}),C('reject_reason','Motivo de rechazo (para la modelo)','long',{w:240}),C('raw_drive','Raw Content (Drive Link)','url',{w:200}),C('edited_files','Edited Content (Attachment)','files',{w:200,view:(r,v)=>stFiles(r).length?filesCell(v):r.edited_thumb?h('a',{class:'fthumb',href:hasLink(r.edited_drive)?r.edited_drive:'#',target:'_blank',rel:'noopener',title:'Vídeo archivado — abrir en Dropbox','aria-label':'Vídeo archivado, abrir link',onclick:e=>e.stopPropagation()},h('img',{src:r.edited_thumb,alt:'',loading:'lazy'}),h('span',{class:'fplay','aria-hidden':'true'},'↗')):h('span',{class:'muted'},'—')}),C('edited_drive','Edited Content (Drive Link)','url',{w:200}),C('variations_posted','Variations Posted','number',{w:100,sum:1}),C('ig_link','IG Link','url',{w:160}),C('model_feedback','Model Feedback','long',{w:180}),C('model_rating','Model Rating','select',{o:'rating',w:100}),C('type','Content Type','select',{o:'content_type',w:140})];
 const accCols=[C('pfp','Profile Picture','img',{w:110}),C('bio','Bio','text',{w:180}),C('link','Account Link','url',{w:220}),C('status','Account Status Last Update','select',{o:'account_status',w:170}),C('health','Account Health Last Update','select',{o:'health',free:1,w:150}),C('daily_posts','Daily Posts','number',{w:90,sum:1}),C('post_via','Posting via','select',{o:'post_via',w:110}),C('verified','Is Verified','select',{o:'verified',w:110}),C('country','Country','select',{o:'country',w:90}),C('branding','Branding','select',{free:1,w:110}),C('platform','Platforms','select',{o:'platform',w:130}),C('why','Why','long',{w:240}),C('landing','Landing Page','url',{w:210}),C('of_link','OF Tracking Link','url',{w:210}),C('highlight','Highlight Link','url',{w:190}),C('acc_center','Acc Center','text',{w:110}),C('tags','Tags','multi',{w:130}),C('tests','Current tests','multi',{w:140}),C('reach_30d','Reach last 30 days','number',{w:130,sum:1}),C('reach_change','Reach last 30 days % change','pct',{w:120})];
 const projCols=[C('start','Start Date','date',{w:110}),C('due','Due Date','date',{w:110}),C('urgency','Urgency','select',{o:'urgency',w:110}),C('status','Status','select',{o:'project_status',w:190}),C('members','Project Member','multi',{from:()=>peopleNames(),free:1,w:220}),C('owner','Project Owner','select',{from:()=>peopleNames(),free:1,w:170}),C('ptype','Project Type','select',{o:'project_type',w:130}),C('description','Description','long',{w:240})];
 const taskCols=[C('project','Project','text',{w:160}),C('due','Due Date','date',{w:110}),C('description','Description','long',{w:260}),C('assignee','Task Assignee','multi',{from:()=>peopleNames(),free:1,w:200}),C('status','Status','select',{o:'task_status',w:120}),C('priority','Priority','select',{o:'priority',w:100}),C('completed','Completed Date','date',{w:120})];
 const stepCols=[C('description','Description','long',{w:360}),C('set_date','Set Date','date',{w:110}),C('due','Due Date','date',{w:110}),C('status','Status','select',{o:'task_status',w:120})];
-const varCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('vstatus','Status','select',{o:'var_status',w:110}),C('ig_link','Post Link','url',{w:200}),C('file','Variation File (link)','url',{w:200}),C('seen','Variation Seen','select',{o:'seen',w:110}),C('views','Views','number',{w:110,sum:1}),C('posted','Posted Date','date',{w:110}),C('removed','Removed? Why?','select',{o:'removed',w:140}),C('removal_date','Removal Date','date',{w:110}),C('doubled','Doubled Down','number',{w:100}),C('type','Content Type','select',{o:'content_type',w:130}),C('vertical','Vertical','select',{o:'vertical',free:1,w:130}),C('trial_reels','Trial Reels','check',{w:90}),C('instructions','Instructions','long',{w:260}),C('tags','Tags','multi',{w:140}),C('edited_drive','Edited Content (Drive Link)','url',{w:200})];
+const varCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('_preview','Edited Content (from Content)','text',{ro:1,w:110,calc:r=>varHas(r)||(srcOf(r)||{}).edited_thumb?'1':null,view:r=>{if(!(varHas(r)||(srcOf(r)||{}).edited_thumb))return h('span',{class:'muted'},'—');const t=thumb(r);const on=!!varStFile(r);return h('button',{type:'button',class:'plain vprev'+(vOff(r)?' off':''),title:on?'Ver vídeo':'Abrir link del vídeo',onclick:e=>{e.stopPropagation();playVar(r)},ondblclick:e=>e.stopPropagation()},t)}}),C('vstatus','Status','select',{o:'var_status',w:110}),C('ig_link','Post Link','url',{w:200}),C('file','Variation File (link)','url',{w:200}),C('seen','Variation Seen','select',{o:'seen',w:110}),C('views','Views','number',{w:110,sum:1}),C('posted','Posted Date','date',{w:110}),C('removed','Removed? Why?','select',{o:'removed',w:140}),C('removal_date','Removal Date','date',{w:110}),C('doubled','Doubled Down','number',{w:100}),C('type','Content Type','select',{o:'content_type',w:130}),C('vertical','Vertical','select',{o:'vertical',free:1,w:130}),C('trial_reels','Trial Reels','check',{w:90}),C('instructions','Instructions','long',{w:260}),C('tags','Tags','multi',{w:140}),C('edited_drive','Edited Content (Drive Link)','url',{w:200})];
 const ST_ACTIVE=['Raw Content','Template','To Do','Instructions Added'];
 const ST_OPEN=['Raw Content','Template','To Do','Instructions Added','Recorded','Edited','Approved','Not Approved','Semi-Posted'];
 const OF_TYPES=['OF Post','OF Story','OF Custom Content','Chatting Sales Content'];
@@ -635,7 +637,7 @@ function retractVars(r){if(!r||LIVE_ST.includes(r.status)||!r.id)return 0;const 
 function syncAllVars(){let n=0;rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});if(n)rerender()}
 let inHook=false;
 function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHook=true;try{
-  if(c==='content'){ensureVars(row);if(retractVars(row))rerender()}
+  if(c==='content'){ensureVars(row);if(retractVars(row))rerender();if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
   if(c==='actions'){const a=row.account_id?S.d.accounts.get(row.account_id):accFind(arr(row.account)[0]);
     if(POST_TYPES.includes(row.action_type)&&row.variation_ref&&S.d.variations.has(row.variation_ref)){const v=S.d.variations.get(row.variation_ref);
       if(isDone(row)&&(v.vstatus!=='Posted'||(row.post_link&&v.ig_link!==row.post_link)))put('variations',v.id,{...v,vstatus:'Posted',posted:v.posted||row.due||today(),ig_link:row.post_link||v.ig_link||null},true);
@@ -831,6 +833,7 @@ function templateDlg(cfg){const list=mine('content').filter(r=>r.status==='Templ
 
 /* ---------- cells ---------- */
 function cellView(col,row){const v=col.calc?col.calc(row):row[col.k];
+  if(col.view)return col.view(row,v);
   if(col.t==='check')return h('input',{type:'checkbox',checked:!!v,style:'width:auto','aria-label':col.l,onchange:e=>patch(col._c,row.id,{[col.k]:e.target.checked})});
   if(v==null||v===''||(Array.isArray(v)&&!v.length))return h('span',{class:'muted'},'—');
   if(col.t==='files')return filesCell(v);
@@ -1055,7 +1058,7 @@ function planView(root){const m=model();if(!m){root.append(h('div',{class:'empty
 /* ---------- bulk edit / duplicate / templates ---------- */
 const contentNum=r=>{const m=String(r&&r.content_id||'').match(/-(\d+)\s*$/);return m?+m[1]:0};
 const nextNum=()=>rows('content').reduce((a,r)=>Math.max(a,contentNum(r)),0)+1;
-function dupRow(cfg,r){const n={...r,id:uid()};delete n.created_at;if(cfg.col==='content'){const sid=nextNum();const m=S.d.models.get(r.model)||model();n.sid=sid;n.content_id=(m?m.name:'')+'-'+(r.type||'Content')+'-'+sid}else if(n[cfg.primary])n[cfg.primary]=n[cfg.primary]+' (copia)';return n}
+function dupRow(cfg,r){const n={...r,id:uid()};delete n.created_at;if(cfg.col==='content'){['raw_files','edited_files','edited_thumb','edited_gone','raw_gone','kalista_id','k_src'].forEach(k=>delete n[k]);const sid=nextNum();const m=S.d.models.get(r.model)||model();n.sid=sid;n.content_id=(m?m.name:'')+'-'+(r.type||'Content')+'-'+sid}else if(n[cfg.primary])n[cfg.primary]=n[cfg.primary]+' (copia)';return n}
 function bulkBar(cfg,vs){const ids=[...vs.sel];const n=ids.length;
   return h('div',{class:'bulkbar',role:'region','aria-label':'Acciones en bloque'},h('b',null,n+' seleccionado'+(n===1?'':'s')),
     h('button',{type:'button',onclick:()=>bulkEdit(cfg,vs)},'✎ Cambiar campo…'),
@@ -1200,7 +1203,7 @@ function pipelineView(tab,root){const kind=tab.trial===true?'trial':(tab.types||
       lv.append(h('div',{style:'padding:6px 10px 14px 46px;border-bottom:1px solid var(--line);background:var(--band)'},
         list.length?h('table',{class:'simple',style:'width:auto;min-width:900px'},h('thead',null,h('tr',null,['Variation ID · '+list.length,'Status','Vertical','Variation','Accounts',kind==='stories'?null:'Trial Reels','Assigned to'].filter(Boolean).map(x=>h('th',null,x)))),
           h('tbody',null,list.map(v=>h('tr',null,h('td',null,h('button',{type:'button',class:'plain',style:'text-align:left;font-weight:600',onclick:()=>vcfg&&recordModal(vcfg,v,false)},v.name||v.id)),h('td',null,chip(v.vstatus,'var_status')||v.vstatus||'—'),h('td',null,v.vertical?chip(v.vertical,'vertical'):'—'),
-            h('td',null,varFile(v)?h('button',{type:'button',class:'plain',onclick:()=>playVar(v),'aria-label':'Ver vídeo de '+(v.name||'')},thumb(v)):h('span',{class:'muted'},'—')),h('td',null,arr(v.accounts).map(l=>accChip(l))),kind==='stories'?null:h('td',null,v.trial_reels?'✓':'—'),h('td',null,assigned(v))))))
+            h('td',null,varHas(v)?h('button',{type:'button',class:'plain vprev'+(vOff(v)?' off':''),onclick:()=>playVar(v),'aria-label':'Ver vídeo de '+(v.name||'')},thumb(v)):h('span',{class:'muted'},'—')),h('td',null,arr(v.accounts).map(l=>accChip(l))),kind==='stories'?null:h('td',null,v.trial_reels?'✓':'—'),h('td',null,assigned(v))))))
         :h('div',{class:'muted'},'Sin variaciones con estos filtros.')))}});
   root.append(lv,h('div',{class:'foot'},h('b',null,acc.length+' cuentas'),' · doble clic en “'+dl+'” para editarlo · ▸ para ver las variaciones de cada cuenta · Days of content = aprobados ÷ daily posts'+(kind==='normal'?' · no cuenta variaciones de contenido marcado como Trial Reels ni de contenido que no esté en Approved / Semi-Posted / Posted':'')))}
 
@@ -1222,13 +1225,70 @@ function genDaily(){if(S.role!=='admin'&&S.mode==='sb')return;if(!S.loaded||!S.d
 
 /* ---------- content assignment (week × account) ---------- */
 function driveId(u){const m=String(u||'').match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})|\/folders\/([\w-]{10,})/);return m?(m[1]||m[2]||null):null}
-const varFile=v=>v&&(v.file||v.edited_drive)||null;
-function thumb(v){const f=varFile(v);const id=driveId(f);if(!f)return'＋';if(id){const im=h('img',{src:'https://drive.google.com/thumbnail?id='+id+'&sz=w120',alt:'',loading:'lazy',referrerpolicy:'no-referrer'});im.addEventListener('error',()=>im.replaceWith('▶'));return im}return'▶'}
-function playVar(v){const f=varFile(v);if(!f)return toast('Esta variación aún no tiene link de vídeo');const id=driveId(f);let body;
+/* ---------- vistas previas: retención ----------
+   El vídeo editado vive en Storage mientras el contenido está en Edited / Approved / pendiente de postear.
+   Cada variación va suelta: una variación de Instagram muestra el vídeo 30 días desde SU fecha de posteo
+   (solo Instagram cuenta, porque solo trackeamos sus views). Pasado eso, y solo si el contenido tiene su
+   link de Dropbox/Drive, el archivo se borra de Storage y queda una miniatura + el link.
+   Raw files: se borran de Storage solo cuando el contenido ya está Posted/Archived/Not Done y tiene link de Raw. */
+const PREV_DAYS=30,PURGE_ST=['Posted','Archived','Not Done'];
+const hasLink=u=>/^https?:\/\/\S+/.test(String(u||'').trim());
+const stFiles=c=>arr(c&&c.edited_files).filter(a=>a&&a.path);
+const rawFiles=c=>arr(c&&c.raw_files).filter(a=>a&&a.path);
+const vPlat=v=>v.platform||(((v.account_id&&S.d.accounts.get(v.account_id))||accFind(arr(v.accounts)[0])||{}).platform)||'';
+const daysAgo=d=>{const t=Date.parse(d);return isNaN(t)?1e9:(Date.now()-t)/864e5};
+const varPrevOn=v=>v.vstatus==='Posted'?(vPlat(v)==='Instagram'&&daysAgo(v.posted)<=PREV_DAYS):v.vstatus==='Approved';
+function keepPrev(c){if(!PURGE_ST.includes(c.status))return true;
+  return rows('variations').some(v=>v.content_ref===c.id&&(v.vstatus==='Posted'?varPrevOn(v):(v.vstatus==='Approved'&&c.status==='Posted')))}
+/* el archivo de Storage que toca enseñar para esta variación (null si ya pasó su ventana) */
+function varStFile(v){const c=v&&srcOf(v);if(!c)return null;const L=stFiles(c);if(!L.length||!varPrevOn(v))return null;return L.find(isVideo)||L[0]}
+function vidThumb(url,isImg){return new Promise(res=>{let done=false;const el=isImg?new Image():document.createElement('video');
+  const fin=x=>{if(done)return;done=true;clearTimeout(to);try{if(!isImg){el.removeAttribute('src');el.load()}}catch(e){}res(x)};const to=setTimeout(()=>fin(null),25000);
+  const draw=()=>{try{const W=isImg?el.naturalWidth:el.videoWidth,H=isImg?el.naturalHeight:el.videoHeight;if(!W||!H)return fin(null);const w=160,hh=Math.round(w*H/W);const cv=document.createElement('canvas');cv.width=w;cv.height=hh;cv.getContext('2d').drawImage(el,0,0,w,hh);fin(cv.toDataURL('image/jpeg',0.62))}catch(e){fin(null)}};
+  el.crossOrigin='anonymous';el.onerror=()=>fin(null);
+  if(isImg){el.onload=draw}else{el.muted=true;el.playsInline=true;el.preload='metadata';el.onloadedmetadata=()=>{try{el.currentTime=Math.min(0.6,(el.duration||1)/2)}catch(e){fin(null)}};el.onseeked=draw}
+  el.src=url})}
+/* miniatura pequeña (~10 KB) guardada en el propio contenido: se queda para siempre, aunque el vídeo se borre */
+let thumbBusy=false,thumbT=null;const thumbFail=new Set();
+const thumbSoon=()=>{clearTimeout(thumbT);thumbT=setTimeout(thumbSweep,4000)};
+async function thumbSweep(){if(thumbBusy||!S.sb||S.role==='model'||!S.loaded)return;thumbBusy=true;
+  try{for(const c0 of rows('content')){const L=stFiles(c0);if(!L.length||c0.edited_thumb||thumbFail.has(c0.id))continue;
+      const f=L.find(isVideo)||L.find(a=>/^image\//.test(a.type||'')||/\.(jpe?g|png|webp|gif)$/i.test(a.name||''));if(!f){thumbFail.add(c0.id);continue}
+      const {data}=await S.sb.storage.from(FILE_BUCKET).createSignedUrl(f.path,600);const d=data&&data.signedUrl?await vidThumb(data.signedUrl,!isVideo(f)):null;
+      const c=S.d.content.get(c0.id);if(!d||!c){thumbFail.add(c0.id);continue}put('content',c.id,{...c,edited_thumb:d},true)}}
+  finally{thumbBusy=false}}
+/* limpieza de Storage (solo admin, como mucho cada 6 h) */
+async function previewSweep(force){if(S.role!=='admin'||!S.sb||!S.loaded)return null;if(!force&&Date.now()-ls.get('crm:psweep',0)<6*36e5)return null;ls.set('crm:psweep',Date.now());
+  await thumbSweep();
+  const C=rows('content');const pE=new Set(),pR=new Set();
+  C.forEach(c=>{if(stFiles(c).length&&hasLink(c.edited_drive)&&!keepPrev(c))pE.add(c.id);if(rawFiles(c).length&&hasLink(c.raw_drive)&&PURGE_ST.includes(c.status))pR.add(c.id)});
+  if(!pE.size&&!pR.size)return {files:0,bytes:0};
+  /* un mismo archivo puede estar en varios contenidos (copias antiguas): solo se borra si TODOS lo sueltan */
+  const refs=new Map();const add=(p,c,k)=>{if(!refs.has(p))refs.set(p,[]);refs.get(p).push([c.id,k])};
+  C.forEach(c=>{stFiles(c).forEach(a=>add(a.path,c,'e'));rawFiles(c).forEach(a=>add(a.path,c,'r'))});
+  const canDel=p=>(refs.get(p)||[]).every(([id,k])=>k==='e'?pE.has(id):pR.has(id));
+  const dels=new Set();C.forEach(c=>{if(pE.has(c.id))stFiles(c).forEach(a=>{if(canDel(a.path))dels.add(a.path)});if(pR.has(c.id))rawFiles(c).forEach(a=>{if(canDel(a.path))dels.add(a.path)})});
+  const gone=new Set();const L=[...dels];
+  for(let i=0;i<L.length;i+=100){const part=L.slice(i,i+100);const {error}=await S.sb.storage.from(FILE_BUCKET).remove(part);if(!error)part.forEach(p=>gone.add(p))}
+  let bytes=0,n=0;const day=today();
+  C.forEach(c0=>{const c=S.d.content.get(c0.id);if(!c)return;const ch={};
+    [['edited_files','edited_gone'],['raw_files','raw_gone']].forEach(([k,g])=>{const all=arr(c[k]);const out=all.filter(a=>a&&a.path&&gone.has(a.path));if(!out.length)return;
+      out.forEach(a=>{bytes+=+a.size||0;n++});ch[k]=all.filter(a=>!(a&&a.path&&gone.has(a.path)));ch[g]=[...arr(c[g]),...out.map(a=>({name:a.name,size:a.size||null,type:a.type||null,purged:day}))]});
+    if(Object.keys(ch).length)put('content',c.id,{...c,...ch},true)});
+  if(n)rerender();return {files:n,bytes}}
+const varFile=v=>v&&(v.file||v.edited_drive||(srcOf(v)||{}).edited_drive)||null;
+const varHas=v=>!!(v&&(varStFile(v)||varFile(v)));
+const vOff=v=>!varStFile(v)&&!!(srcOf(v)||{}).edited_thumb;
+function thumb(v){const sf=varStFile(v);const c=v&&srcOf(v);const tn=c&&c.edited_thumb;if(tn)return h('img',{src:tn,alt:'',loading:'lazy'});if(sf)return'▶';const f=varFile(v);const id=driveId(f);if(!f)return'＋';if(id){const im=h('img',{src:'https://drive.google.com/thumbnail?id='+id+'&sz=w120',alt:'',loading:'lazy',referrerpolicy:'no-referrer'});im.addEventListener('error',()=>im.replaceWith('▶'));return im}return'▶'}
+function playVar(v){const sf=varStFile(v);if(sf&&S.sb){S.sb.storage.from(FILE_BUCKET).createSignedUrl(sf.path,3600).then(({data})=>{if(!data||!data.signedUrl)return playLink(v);const lk=varFile(v);
+    openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,v.name,h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),isVideo(sf)?h('video',{src:data.signedUrl,controls:true,autoplay:true,playsinline:true,style:'width:100%;max-height:70vh;background:#000'}):h('img',{src:data.signedUrl,alt:'',style:'width:100%;max-height:70vh;object-fit:contain;background:#000'}),
+      h('div',{style:'margin-top:8px;display:flex;gap:14px;flex-wrap:wrap'},h('a',{href:'#',onclick:e=>{e.preventDefault();downloadFile(sf)}},'Descargar ⬇'),lk?h('a',{href:lk,target:'_blank',rel:'noopener'},(/dropbox/i.test(lk)?'Abrir en Dropbox':'Abrir link')+' ↗'):null)))});return}
+  playLink(v)}
+function playLink(v){const f=varFile(v);if(!f)return toast('Esta variación aún no tiene link de vídeo');const id=driveId(f);let body;
   if(id)body=h('iframe',{src:'https://drive.google.com/file/d/'+id+'/preview',title:'Vídeo de '+v.name,allow:'autoplay; fullscreen',style:'width:100%;height:70vh;border:0;background:#000'});
   else if(/\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(f))body=h('video',{src:f,controls:true,autoplay:true,playsinline:true,style:'width:100%;max-height:70vh;background:#000'});
   else body=h('p',null,'Este link no se puede reproducir aquí. ',h('a',{href:f,target:'_blank',rel:'noopener'},'Abrir en una pestaña nueva ↗'));
-  openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,v.name,h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),body,h('div',{style:'margin-top:8px'},h('a',{href:f,target:'_blank',rel:'noopener'},'Abrir en Drive ↗'))))}
+  openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,v.name,h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),body,h('div',{style:'margin-top:8px'},h('a',{href:f,target:'_blank',rel:'noopener'},(/dropbox/i.test(f)?'Abrir en Dropbox':id?'Abrir en Drive':'Abrir link')+' ↗'))))}
 const taskAcc=(t,a)=>t.account_id?t.account_id===a.id:arr(t.account).some(l=>{const f=accFind(l);return f&&f.id===a.id});
 const postTasks=()=>rows('actions').filter(t=>POST_TYPES.includes(t.action_type));
 function assignable(a,kind,exceptTask){const taken=new Set(postTasks().filter(t=>t.variation_ref&&(!exceptTask||t.id!==exceptTask)).map(t=>t.variation_ref));
@@ -1254,7 +1314,7 @@ function newTaskDlg(a,kind0,due0){const state={v:null};let kind=kind0||'NR',acc=
 function editTaskDlg(t){const a=t.account_id?S.d.accounts.get(t.account_id):accFind(arr(t.account)[0]);if(!a){recordModal(PAGES.posting.tabs[0].cfg,t,false);return}
   const kind=kindOf(t);const state={v:t.variation_ref||null};const late=!isDone(t)&&t.status!=='Cancelled'&&t.due&&t.due<today();const miss=isMiss(t)||late;const cur=t.variation_ref?S.d.variations.get(t.variation_ref):null;
   const due=h('input',{id:'et_due',type:'date',value:t.due||'',required:true});const stSel=h('select',{id:'et_st'},Object.keys(O.posting_status).map(x=>h('option',{value:x,selected:x===(t.status||'To Do')},x)));const link=h('input',{id:'et_link',type:'url',value:t.post_link||'',placeholder:'https://…'});
-  const varBox=h('div');const showVar=()=>{if(state.v&&!state.pick){const v=S.d.variations.get(state.v);varBox.replaceChildren(h('span',{class:'chip g'},v?v.name:(t.variation_id||'—')),' ',varFile(v)?h('button',{type:'button',class:'plain',onclick:()=>playVar(v)},'▶ ver'):null,' ',h('button',{type:'button',class:'plain',onclick:()=>{state.pick=true;showVar()}},'change'))}else{const p=varPicker(a,()=>kind,state,t.id);varBox.replaceChildren(p.el)}};showVar();
+  const varBox=h('div');const showVar=()=>{if(state.v&&!state.pick){const v=S.d.variations.get(state.v);varBox.replaceChildren(h('span',{class:'chip g'},v?v.name:(t.variation_id||'—')),' ',varHas(v)?h('button',{type:'button',class:'plain',onclick:()=>playVar(v)},'▶ ver'):null,' ',h('button',{type:'button',class:'plain',onclick:()=>{state.pick=true;showVar()}},'change'))}else{const p=varPicker(a,()=>kind,state,t.id);varBox.replaceChildren(p.el)}};showVar();
   openModal(h('div',{class:'dlg',style:'width:min(640px,100%)'},h('h2',null,'Edit task',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
     miss?h('div',{style:'border:1px solid var(--line);background:var(--bad-bg);padding:10px 12px;margin-bottom:10px'},h('div',{style:'font-size:11px;letter-spacing:.06em;font-weight:700'},'🛑 WHY INCOMPLETE'),h('div',{class:'muted',style:'margin-top:6px;font-size:12px'},'Reasoning of Incomplete Task'),h('b',null,t.reasoning||(t.variation_ref?'Sin motivo indicado todavía':'No content available')),h('div',{class:'muted',style:'margin-top:6px;font-size:12px'},'Justification (extra details)'),h('div',null,t.justification||'—')):null,
     h('div',{class:'f'},h('label',null,'Content type 🔒'),h('div',null,h('span',{class:'chip g'},KIND[kind][0]))),h('div',{class:'f'},h('label',null,'Account 🔒'),h('div',null,accChip(accLabel(a)))),h('div',{class:'f'},h('label',null,'Variation'),varBox),
@@ -1282,7 +1342,7 @@ function assignView(root){const av=st.assign||(st.assign={statuses:['Running & P
       tasks.forEach(t=>{const kd=kindOf(t);const v=t.variation_ref?S.d.variations.get(t.variation_ref):null;const posted=isDone(t);const miss=isMiss(t)||(!posted&&t.status!=='Cancelled'&&k<td);const cls=posted?'done':miss?'miss':v?'set':'open';
         const line2=posted?(v?v.name:(t.variation_id||'Posted')):miss?'🛑 '+(t.reasoning||(v?'No posteado':'No content available')):v?v.name:'Choose a variation…';
         const card=h('div',{class:'acard '+cls,role:'button',tabindex:'0',title:KIND[kd][0]+' · '+(v?v.name:'sin variación')+' · '+(t.status||'To Do')+(t.reasoning?' · '+t.reasoning:''),onclick:()=>editTaskDlg(t),onkeydown:e=>{if(e.key==='Enter'&&e.target===card)editTaskDlg(t)}},
-          h('button',{type:'button',class:'th','aria-label':v&&varFile(v)?'Reproducir vídeo':'Sin vídeo',onclick:e=>{if(v&&varFile(v)){e.stopPropagation();playVar(v)}}},v?thumb(v):'＋'),
+          h('button',{type:'button',class:'th','aria-label':v&&varHas(v)?'Reproducir vídeo':'Sin vídeo',onclick:e=>{if(v&&varHas(v)){e.stopPropagation();playVar(v)}}},v?thumb(v):'＋'),
           h('div',{class:'tx'},h('div',null,h('span',{class:'k'},kd),h('b',null,(v&&v.vertical)||t.vertical||(v?'':'No content'))),h('div',{class:'muted',style:'font-size:12px'},line2)));cell.append(card)});
       ['NR','TR'].forEach(kd=>{for(let i=0;i<need[kd];i++){const past=k<td;const card=h('div',{class:'acard '+(past?'miss':'open'),role:'button',tabindex:'0',title:KIND[kd][0]+' sin asignar',onclick:()=>newTaskDlg(a,kd,k),onkeydown:e=>{if(e.key==='Enter')newTaskDlg(a,kd,k)}},h('span',{class:'th'},'＋'),h('div',{class:'tx'},h('div',null,h('span',{class:'k'},kd),h('b',null,'No content')),h('div',{class:'muted',style:'font-size:12px'},past?'🛑 No content assigned':'Choose a variation…')));cell.append(card)}});
       g.append(cell)})});
@@ -1863,7 +1923,7 @@ const openSec=ls.get('crm:secs',{});
 function render(){
   applyLayout();
   if(S.role==='model'&&S.profile){st.route='modelapp';st.model=S.profile.model_id}
-  if(S.loaded&&!S.synced&&S.role!=='model'&&S.d.variations){S.synced=true;setTimeout(syncAllVars,0)}
+  if(S.loaded&&!S.synced&&S.role!=='model'&&S.d.variations){S.synced=true;setTimeout(syncAllVars,0);setTimeout(()=>{previewSweep().then(r=>{if(r&&r.files)toast('Storage: '+r.files+' archivo'+(r.files===1?'':'s')+' pasado'+(r.files===1?'':'s')+' a Dropbox ('+fmtSize(r.bytes)+' liberados)')}).catch(()=>{});thumbSweep().catch(()=>{})},6000)}
   if(S.loaded&&!S.reqSynced&&S.role!=='model'){S.reqSynced=true;setTimeout(()=>rows('content').forEach(r=>{const q=calcReq(r);if(r.reps_needed!==q.reps||r.files_needed!==q.files)put('content',r.id,r,true)}),0)}
   if(S.loaded&&S.role!=='model')setTimeout(genDaily,0);
   if(!st.keepPop&&!(popEl&&popEl.dataset.keep))closePop();const s=settings(),m=model();if(m&&st.model!==m.id){st.model=m.id}
