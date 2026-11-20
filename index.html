@@ -118,6 +118,24 @@ header .sp{flex:1}
 .pop.longpop{position:fixed;z-index:60;padding:0;max-width:none;max-height:none;overflow:hidden;display:flex;flex-direction:column}.pop.longpop textarea{min-width:0}
 .lp-head{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}.lp-tools{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line)}.lp-tools button{min-width:32px}
 .lp-link{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid var(--line)}.lp-link[hidden]{display:none}.lp-link input{flex:1;min-width:0}
+.kopen{padding:2px 8px;font-size:12px;white-space:nowrap}
+.kdoc-bar{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--page);z-index:2}
+.kdoc{max-width:860px;margin:0 auto;padding:18px 28px 80px}
+.kback{margin-bottom:18px}
+.ktitle{font-size:34px;line-height:1.2;margin:0 0 8px;font-weight:700}
+.kmeta{display:flex;gap:6px;margin-bottom:14px}
+.kbody{font-size:15px;line-height:1.65;overflow-wrap:anywhere}
+.kbody h2{font-size:24px;margin:28px 0 8px;font-weight:700}.kbody h3{font-size:19px;margin:22px 0 6px;font-weight:700}.kbody h4{font-size:16px;margin:18px 0 4px}
+.kbody p{margin:0 0 10px}.kbody ul,.kbody ol{margin:2px 0 10px;padding-left:26px}.kbody li{margin:3px 0}.kbody li>ul,.kbody li>ol{margin:2px 0}
+.kbody hr{border:0;border-top:1px solid var(--line);margin:22px 0}.kbody a{color:var(--link);text-decoration:underline}
+.kbody code{background:var(--band);padding:1px 5px;font-size:13px}.kbody blockquote{margin:8px 0;padding:2px 14px;border-left:3px solid var(--border);color:var(--text2)}
+.kbody li.task{list-style:none;margin-left:-22px}.kchk{display:flex;gap:9px;align-items:flex-start;cursor:pointer}.kchk input{width:17px;height:17px;margin:4px 0 0;flex:none;accent-color:var(--accent);cursor:pointer}
+.kbody li.task.done>.kchk span{text-decoration:line-through;color:var(--text2)}
+.kcall{display:flex;gap:10px;padding:12px 16px;margin:10px 0 14px;border-radius:6px;background:var(--band)}.kcall .ki{font-size:18px;line-height:1.4}.kcall>div{flex:1;min-width:0}.kcall p:last-child,.kcall ul:last-child{margin-bottom:0}
+.kcall.beige{background:rgba(212,175,55,.15)}.kcall.blue{background:rgba(59,130,246,.14)}.kcall.yellow{background:rgba(234,179,8,.16)}.kcall.red{background:rgba(239,68,68,.14)}.kcall.green{background:rgba(34,197,94,.14)}
+.kprog{display:flex;gap:12px;align-items:center;margin-top:22px;padding-top:12px;border-top:1px solid var(--line);color:var(--text2)}
+.ktitle-in{font-size:24px;font-weight:700;margin-bottom:4px}.kedit{display:grid;grid-template-columns:1fr 1fr;gap:16px}.kedit .kmd{min-height:60vh;font:13px/1.5 ui-monospace,monospace}.kedit .kbody{border:1px solid var(--line);padding:12px 16px;max-height:70vh;overflow:auto}
+@media(max-width:800px){.kedit{grid-template-columns:1fr}.kdoc{padding:14px 14px 60px}.ktitle{font-size:26px}}
 .rt{white-space:pre-wrap;overflow-wrap:anywhere}.rt a{color:var(--link);text-decoration:underline}.rt ul,.rt ol{margin:0;padding-left:22px}.rt blockquote{margin:0 0 0 22px}
 .rt-cell{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--clamp,3);overflow:hidden}
 .rt-ed{padding:12px;line-height:1.5;overflow:auto;max-height:60vh;outline:none}.rt-ed:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -546,7 +564,7 @@ const funnelCols=[C('platform','Platforms','select',{o:'platform',w:130}),C('sta
 const linkpagesCols=[C('platform','Platform','select',{o:'platform',w:120}),C('account_link','Account Link','url',{w:190}),C('page','Page','text',{w:140}),C('format','Format','select',{free:1,w:120}),C('address','Address','text',{w:170}),C('verification','Verification','select',{o:'verification',w:120}),C('cloaking','Cloaking','select',{o:'cloaking',w:110}),C('main_page','Main page of domain','check',{w:120}),C('account_status','Account Status','select',{o:'account_status',w:160})];
 const trackinglinksCols=[C('url','URL','url',{w:240}),C('of_account','OnlyFans account','text',{w:150}),C('status','Status','select',{o:'profile_status',w:110}),C('created_by','Created by','text',{w:140}),C('created_at','Created at','date',{w:120}),C('clicks','Clicks','number',{w:100,sum:1}),C('subs','Subs','number',{w:100,sum:1}),C('revenue','Revenue ($)','number',{w:110,sum:1})];
 const editCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('status','Status','select',{o:'content_status',w:150}),C('type','Content Type','select',{o:'content_type',w:140}),C('vertical','Vertical','select',{o:'vertical',free:1,w:140}),C('editor','Editor','select',{free:1,w:150}),C('editing_priority','Editing Priority','select',{o:'priority',w:130}),C('edited_variations_needed','Edited Variations Needed','number',{w:120,sum:1}),C('editing_time','Editing Time','text',{w:120}),C('instructions','Instructions','long',{w:240}),C('reference_link','Reference Link','url',{w:150}),C('raw_files','Raw Files (Model)','files',{w:180}),C('reject_reason','Motivo de rechazo (para la modelo)','long',{w:240}),C('raw_drive','Raw Content (Drive Link)','url',{w:180}),C('edited_drive','Edited Content (Drive Link)','url',{w:180}),C('edited_by','Edited By','select',{free:1,w:140}),C('edited_date','Edited Date','date',{w:120}),C('edit_count','Edit Count','number',{w:100,sum:1}),C('due_date','Due Date','date',{w:120})];
-const knowledgeCols=[C('category','Category','select',{free:1,w:160}),C('doc_type','Document Type','select',{o:'doc_type',free:1,w:150}),C('link','Document (link)','url',{w:240}),C('body','Notes','long',{w:320}),C('order','Order','number',{w:80})];
+const knowledgeCols=[C('_open','Document','text',{ro:1,w:110,calc:r=>r.body||r.link?'1':null,view:r=>h('button',{type:'button',class:'kopen',onclick:e=>{e.stopPropagation();go('knowledge',r.id)},ondblclick:e=>e.stopPropagation()},'📄 Open')}),C('category','Category','select',{free:1,w:160}),C('doc_type','Document Type','select',{o:'doc_type',free:1,w:150}),C('link','External link','url',{w:200}),C('order','Order','number',{w:80})];
 const contentTab=(id,label,dot,types,defSt,group,extra)=>({id,label,dot,view:'list',cfg:{col:'content',noun:'content',primary:'content_id',cols:contentCols,scope:r=>types.includes(r.type),filters:['status','content_plan','country','vertical','accounts','tags','model_tags','_branding','content_id','trial_reels'],keepOrder:true,def:{status:defSt},group:group||['status'],newRow:()=>({type:types[0],status:'To Do'}),...(extra||{})}});
 
 const PAGES={
@@ -570,7 +588,7 @@ const PAGES={
  posting:{title:'Posting',sub:'posting diario por cuenta',icon:'📲',tabs:[['suspended','🚫 Suspended',r=>r.action_type==='Suspension Fix'],['ig','IG',r=>r.platform==='Instagram'],['yt','YT',r=>r.platform==='YouTube'],['tw','Twitter',r=>r.platform==='Twitter'],['tt','TikTok',r=>r.platform==='TikTok'],['th','Threads',r=>r.platform==='Threads'],['fb','Facebook',r=>r.platform==='Facebook Page'||r.platform==='Facebook']].map(([id,label,scope])=>({id,label,view:PPLAT[id]?'posting':'list',cfg:{col:'actions',noun:'tasks',primary:'name',global:true,cols:actionsCols,scope,filters:['status','platform','action_type','assignee'],group:['status'],newRow:()=>({name:'New task',status:'To Do',action_type:id==='suspended'?'Suspension Fix':'Post',platform:({ig:'Instagram',fb:'Facebook Page',yt:'YouTube',tw:'Twitter',tt:'TikTok',th:'Threads'})[id]||''})}}))},
  funneling:{title:'Funneling',sub:'links de atribución y tracking',icon:'🔗',global:true,tabs:[{id:'attribution',label:'Attribution Links',view:'list',cfg:{col:'accounts',noun:'accounts',primary:'name',global:true,cols:funnelCols,scope:()=>true,filters:['status','platform'],group:['status'],newRow:()=>({status:'Pending',name:'New Account'})}},{id:'linkpages',label:'Link Pages',view:'linkpages'},{id:'tracking',label:'Tracking Links',view:'list',cfg:{col:'trackinglinks',noun:'links',primary:'name',global:true,cols:trackinglinksCols,filters:['status'],group:[],sort:{k:'clicks',dir:-1},newRow:()=>({name:'New link',status:'Active'})}}]},
  editsmgmt:{title:'Edits MGMT',sub:'cola de edición',icon:'🧿',tabs:[{id:'pipeline',label:'Pipeline',view:'list',cfg:{col:'content',noun:'content',primary:'content_id',cols:editCols,scope:r=>['Recorded','Edited','Not Approved','Approved'].includes(r.status),filters:['editor','type','status'],group:['editor','type'],newRow:()=>({type:'Short Form',status:'Recorded'})}},{id:'editing',label:'Editing',view:'list',cfg:{col:'content',noun:'content',primary:'content_id',cols:editCols,scope:r=>['Recorded','Edited','Not Approved'].includes(r.status),filters:['editor','type','vertical'],group:['editor','type','status'],newRow:()=>({type:'Short Form',status:'Recorded'})}},{id:'priority',label:'Editing By Priority',view:'list',cfg:{col:'content',noun:'content',primary:'content_id',cols:editCols,scope:r=>['Recorded','Edited','Not Approved'].includes(r.status),filters:['editing_priority','editor'],group:['editing_priority','editor'],newRow:()=>({type:'Short Form',status:'Recorded',editing_priority:'Medium'})}},{id:'work',label:"Editor's Work",view:'list',cfg:{col:'content',noun:'edits',primary:'content_id',cols:editCols,scope:r=>['Edited','Approved','Semi-Posted','Posted'].includes(r.status),filters:['edited_by','type'],group:['edited_by','type'],sort:{k:'edited_date',dir:-1},newRow:()=>({type:'Short Form',status:'Edited'})}}]},
- knowledge:{title:'Knowledge Library',sub:'SOPs y documentos internos',icon:'📚',global:true,view:'list',cfg:{col:'knowledge',noun:'documents',primary:'name',global:true,cols:knowledgeCols,filters:['category','doc_type'],group:['category'],sort:{k:'order',dir:1},newRow:()=>({name:'New document'})}},
+ knowledge:{title:'Knowledge Library',sub:'SOPs y documentos internos',icon:'📚',global:true,view:'list',cfg:{col:'knowledge',noun:'documents',primary:'name',primaryLabel:'SOP Name',global:true,cols:knowledgeCols,filters:['category','doc_type'],group:['category'],sort:{k:'order',dir:1},newRow:()=>({name:'New document'})}},
  tutorials:{title:'Tutorials',sub:'videos shown in the model app',icon:'🎓',global:true,view:'list',cfg:{col:'tutorials',noun:'tutorials',primary:'name',global:true,cols:[C('url','Video link','url',{w:320}),C('description','Description','long',{w:320}),C('order','Order','number',{w:80})],group:[],sort:{k:'order',dir:1},newRow:()=>({name:'New tutorial'})}},
  modelapp:{title:'Model App',sub:'',icon:'📱',global:true,view:'modelapp'},
  access:{title:'Accesos',sub:'logins de tu equipo y tus modelos',icon:'🔑',global:true,view:'access'},
@@ -611,7 +629,7 @@ function recordModal(cfg,row,isNew){
   form.append(h('div',{class:'acts'},isNew?h('span'):h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',class:'btn-danger',onclick:()=>confirmDlg('Delete this record? This cannot be undone.','Delete',()=>del(cfg.col,row.id))},'Delete'),h('button',{type:'button',onclick:()=>{const d=dupRow(cfg,S.d[cfg.col].get(row.id)||row);closeModal();recordModal(cfg,d,true)}},'⧉ Duplicar')),h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',onclick:closeModal},'Cancel'),h('button',{type:'submit',class:'btn-acc'},'Save'))));
   openModal(h('div',{class:'dlg'},h('h2',null,isNew?'New record':(row[cfg.primary]||'Record'),h('button',{type:'button',onclick:closeModal,'aria-label':'Close'},'✕')),form))}
 function newRecord(cfg,preset){const m=model();const base={id:uid(),...(cfg.global?{}:{model:m&&m.id}),...(cfg.newRow?cfg.newRow():{}),...(preset||{})};
-  if(cfg.col==='content'){const n=nextNum();base.sid=n;base.content_id=(m?m.name:'')+'-'+base.type+'-'+n}
+  if(cfg.col==='content'){const n=nextNum(base.model,base.type);base.sid=n;base.content_id=(m?m.name:'')+'-'+base.type+'-'+n}
   recordModal(cfg,base,true)}
 
 /* ---------- content plans (weekly), universal chip ---------- */
@@ -682,6 +700,53 @@ function mdHtml(t){const keep=[];const hold=x=>{keep.push(x);return '\u0001'+(ke
   x=x.replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/g,'<u>$1</u>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/(^|[\s(>])_([^_\n]+)_(?=$|[\s.,;:!?)<])/gm,'$1<i>$2</i>');
   return x.replace(/\u0001(\d+)\u0002/g,(m,i)=>keep[+i])}
 function richNode(t,cls){return h('div',{class:'rt'+(cls?' '+cls:''),html:mdHtml(t)})}
+/* ---------- Knowledge Library: documento (markdown → página como Kalista) ---------- */
+const CALLOUT={'⭐':'beige','🌟':'beige','💡':'blue','ℹ️':'blue','📌':'blue','⚠️':'yellow','❗':'red','🚫':'red','⛔':'red','✅':'green','📝':'gray'};
+function docInline(t){return mdHtml(t).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/(^|[\s(>])\*([^*\n]+)\*(?=$|[\s.,;:!?)<])/g,'$1<i>$2</i>')}
+function docHtml(md){const L=String(md||'').replace(/\r/g,'').split('\n');let o='',stack=[],para=[],ci=0;
+  const flushP=()=>{if(para.length){o+='<p>'+para.map(docInline).join('<br>')+'</p>';para=[]}};
+  const closeLists=to=>{while(stack.length>to){o+='</li></'+stack.pop().t+'>'}};
+  const item=(ind,t,num,text)=>{while(stack.length&&stack[stack.length-1].ind>ind)o+='</li></'+stack.pop().t+'>';
+    const top=stack[stack.length-1];
+    if(top&&top.ind===ind&&top.t!==t){o+='</li></'+stack.pop().t+'>'}
+    const tp=stack[stack.length-1];
+    if(tp&&tp.ind===ind)o+='</li><li>';else{stack.push({t,ind});o+='<'+t+(t==='ol'&&num>1?' start="'+num+'"':'')+'><li>'}
+    const m=text.match(/^\[( |x|X)\]\s*(.*)$/);
+    if(m){const i=ci++;o=o.replace(/<li>$/,'<li class="task">');o+='<label class="kchk"><input type="checkbox" data-i="'+i+'"'+(m[1]!==' '?' data-def="1"':'')+'><span>'+docInline(m[2])+'</span></label>'}else o+=docInline(text)};
+  for(let i=0;i<L.length;i++){const raw=L[i].replace(/\t/g,'    ');const line=raw.trim();
+    if(!line){flushP();const nx=L.slice(i+1).find(x=>x.trim());if(!nx||!/^\s*([-*•]|\d+[.)])\s+/.test(nx))closeLists(0);continue}
+    let m;
+    if(/^<callout\b/i.test(line)){flushP();closeLists(0);const ic=(line.match(/icon="([^"]*)"/)||[])[1]||'💡';let body=[];const rest=line.replace(/^<callout[^>]*>/i,'');if(rest)body.push(rest);while(!/<\/callout>\s*$/i.test(body[body.length-1]||'')&&i+1<L.length)body.push(L[++i].trim());body=body.join('\n').replace(/<\/callout>\s*$/i,'').trim();o+='<div class="kcall '+(CALLOUT[ic]||'gray')+'"><span class="ki">'+escH(ic)+'</span><div>'+docHtml(body).replace(/^<p>|<\/p>$/g,'')+'</div></div>';continue}
+    if(/^(-{3,}|\*{3,}|_{3,})$/.test(line)){flushP();closeLists(0);o+='<hr>';continue}
+    if(m=line.match(/^(#{1,4})\s+(.*)$/)){flushP();closeLists(0);const n=Math.max(2,m[1].length);o+='<h'+n+'>'+docInline(m[2])+'</h'+n+'>';continue}
+    if(line[0]==='>'){flushP();closeLists(0);const q=[];while(i<L.length&&L[i].trim()[0]==='>'){q.push(L[i].trim().replace(/^>\s?/,''));i++}i--;
+      const first=q[0]||'';const em=Object.keys(CALLOUT).find(k=>first.startsWith(k));
+      if(em){q[0]=first.slice(em.length).trim();o+='<div class="kcall '+CALLOUT[em]+'"><span class="ki">'+em+'</span><div>'+docHtml(q.join('\n')).replace(/^<p>|<\/p>$/g,'')+'</div></div>'}else o+='<blockquote>'+docHtml(q.join('\n'))+'</blockquote>';continue}
+    if(m=raw.match(/^(\s*)([-*•]|(\d+)[.)])\s+(.*)$/)){flushP();item(m[1].length,m[3]?'ol':'ul',m[3]?+m[3]:1,m[4]);continue}
+    if(stack.length&&/^\s{2,}/.test(raw)){o+='<br>'+docInline(line);continue}
+    closeLists(0);para.push(line)}
+  flushP();closeLists(0);return o}
+function kdocView(root,id){const d=S.d.knowledge.get(id);
+  if(!d){root.append(h('div',{class:'empty'},'Documento no encontrado. ',h('a',{href:'#knowledge',onclick:e=>{e.preventDefault();go('knowledge')}},'Volver')));return}
+  const key='crm:kchk:'+id;const edit=st.kedit===id;
+  const top=h('div',{class:'kdoc-bar'},h('b',null,'Documents'),h('span',{style:'flex:1'}),
+    edit?null:(canEdit()?h('button',{type:'button',onclick:()=>{st.kedit=id;render()}},'✏️ Editar'):h('span',{class:'muted'},'Read only')));
+  const wrap=h('div',{class:'kdoc'});
+  wrap.append(h('button',{type:'button',class:'kback',onclick:()=>{st.kedit=null;go('knowledge')}},'← Back'));
+  if(edit){const ti=h('input',{value:d.name||'','aria-label':'Título',class:'ktitle-in'});const ta=h('textarea',{class:'kmd','aria-label':'Contenido'},d.body||'');const pv=h('div',{class:'kbody'});const upd=()=>{pv.innerHTML=docHtml(ta.value)};ta.addEventListener('input',upd);upd();
+    wrap.append(ti,h('div',{class:'hint',style:'margin:6px 0'},'Formato: # Título · ## Sección · - lista (con 2 espacios delante = sub-lista) · 1. numerada · - [ ] checkbox · **negrita** · > ⭐ / > 💡 / > ⚠️ caja de aviso · --- separador · [texto](https://link)'),
+      h('div',{class:'kedit'},ta,pv),
+      h('div',{class:'acts'},h('button',{type:'button',onclick:()=>{st.kedit=null;render()}},'Cancelar'),h('button',{type:'button',class:'btn-acc',onclick:()=>{patch('knowledge',id,{name:ti.value.trim()||d.name,body:ta.value});st.kedit=null;toast('Documento guardado');render()}},'Guardar')));
+    root.append(top,wrap);return}
+  const meta=[d.category,d.doc_type].filter(Boolean);
+  wrap.append(h('h1',{class:'ktitle'},d.name||'Sin título'),meta.length?h('div',{class:'kmeta'},meta.map(x=>h('span',{class:'chip'},x))):null);
+  if(d.link)wrap.append(h('div',{style:'margin:4px 0 14px'},h('a',{href:d.link,target:'_blank',rel:'noopener'},'🔗 Abrir documento original')));
+  const body=h('div',{class:'kbody',html:d.body?docHtml(d.body):''});if(!d.body)body.append(h('div',{class:'muted'},canEdit()?'Este documento aún no tiene contenido. Pulsa ✏️ Editar para escribirlo.':'Este documento aún no tiene contenido.'));
+  const saved=ls.get(key,{});const boxes=[...body.querySelectorAll('.kchk input')];
+  const prog=h('div',{class:'kprog'});const upd=()=>{const n=boxes.filter(b=>b.checked).length;prog.replaceChildren(boxes.length?h('span',null,'✅ '+n+' / '+boxes.length+' completado'+(n===boxes.length?' — ¡todo listo!':'')):'',boxes.length?h('button',{type:'button',class:'plain',onclick:()=>{ls.set(key,{});boxes.forEach(b=>{b.checked=false;b.closest('li').classList.remove('done')});upd()}},'Reiniciar'):'')};
+  boxes.forEach(b=>{const i=b.dataset.i;b.checked=i in saved?!!saved[i]:!!b.dataset.def;b.closest('li').classList.toggle('done',b.checked);b.addEventListener('change',()=>{const s2=ls.get(key,{});s2[i]=b.checked;ls.set(key,s2);b.closest('li').classList.toggle('done',b.checked);upd()})});upd();
+  wrap.append(body);if(boxes.length)wrap.append(prog);
+  root.append(top,wrap)}
 function htmlMd(root){const blk=/^(DIV|P|LI|UL|OL|BLOCKQUOTE|H[1-6]|TR|PRE)$/;const B='\u0003',E='\u0004';const flat=x=>x.replace(/^[\n\u0003]+|[\n\u0003]+$/g,'').replace(/\u0003+/g,'\n').replace(/\u0004/g,'');
   const walk=(n,ctx)=>{if(n.nodeType===3)return n.nodeValue.replace(/ /g,' ');if(n.nodeType!==1)return'';const tag=n.tagName;if(/^(SCRIPT|STYLE)$/.test(tag))return'';
     if(tag==='BR')return !n.nextSibling&&n.parentNode!==root&&blk.test(n.parentNode.tagName)?'':'\n';
@@ -1062,8 +1127,8 @@ function planView(root){const m=model();if(!m){root.append(h('div',{class:'empty
 
 /* ---------- bulk edit / duplicate / templates ---------- */
 const contentNum=r=>{const m=String(r&&r.content_id||'').match(/-(\d+)\s*$/);return m?+m[1]:0};
-const nextNum=()=>rows('content').reduce((a,r)=>Math.max(a,contentNum(r)),0)+1;
-function dupRow(cfg,r){const n={...r,id:uid()};delete n.created_at;if(cfg.col==='content'){['raw_files','edited_files','edited_thumb','edited_gone','raw_gone','kalista_id','k_src'].forEach(k=>delete n[k]);const sid=nextNum();const m=S.d.models.get(r.model)||model();n.sid=sid;n.content_id=(m?m.name:'')+'-'+(r.type||'Content')+'-'+sid}else if(n[cfg.primary])n[cfg.primary]=n[cfg.primary]+' (copia)';return n}
+const nextNum=(mid,type)=>rows('content').filter(r=>r.model===mid&&(r.type||'Content')===(type||'Content')).reduce((a,r)=>Math.max(a,contentNum(r)),0)+1;
+function dupRow(cfg,r){const n={...r,id:uid()};delete n.created_at;if(cfg.col==='content'){['raw_files','edited_files','edited_thumb','edited_gone','raw_gone','kalista_id','k_src'].forEach(k=>delete n[k]);const m=S.d.models.get(r.model)||model();const sid=nextNum(r.model||(m&&m.id),r.type||'Content');n.sid=sid;n.content_id=(m?m.name:'')+'-'+(r.type||'Content')+'-'+sid}else if(n[cfg.primary])n[cfg.primary]=n[cfg.primary]+' (copia)';return n}
 function bulkBar(cfg,vs){const ids=[...vs.sel];const n=ids.length;
   return h('div',{class:'bulkbar',role:'region','aria-label':'Acciones en bloque'},h('b',null,n+' seleccionado'+(n===1?'':'s')),
     h('button',{type:'button',onclick:()=>bulkEdit(cfg,vs)},'✎ Cambiar campo…'),
@@ -1411,7 +1476,7 @@ function trialStrategy(v){const src=srcOf(v);const a=(v.account_id&&S.d.accounts
       c=[h('p',null,'Se van a crear ',h('b',null,pick.length+' trial reel'+(pick.length===1?'':'s')),' en estado ',chip('Recorded','content_status'),' (no le aparecen a la modelo; van directos a edición).'),
         h('div',{class:'f'},h('label',null,'Cuenta (fija)'),h('div',null,accChip(accLabel(a)),h('div',{class:'hint'},'Estos trial reels solo se pueden postear en esta cuenta.'))),h('div',{class:'f'},h('label',null,'Vídeo de origen'),h('div',null,h('a',{href:S2.link,target:'_blank',rel:'noopener'},S2.link))),
         h('div',{class:'f'},h('label',null,'Templates'),h('div',null,pick.map(t=>h('div',null,'• '+t.name)))),
-        acts(()=>{S2.step=2;draw()},()=>{const made=[];const m=S.d.models.get(v.model)||model();let sid=nextNum()-1;
+        acts(()=>{S2.step=2;draw()},()=>{const made=[];const m=S.d.models.get(v.model)||model();let sid=nextNum(v.model||(m&&m.id),'Short Form')-1;
           pick.forEach(t=>{sid++;const d={id:uid(),model:v.model||(m&&m.id),sid,content_id:(m?m.name:'')+'-Short Form-'+sid,type:'Short Form',status:'Recorded',trial_reels:true,country:(src&&src.country)||a.country||null,vertical:vert||null,concept:t.name,instructions:t.instructions||null,tags:arr(t.tags),reference_link:v.ig_link||(src&&src.reference_link)||null,raw_drive:S2.link,accounts:[accLabel(a)],acc_lock:true,source_variation:v.id,source_content:src?src.id:null,template_id:t.id};put('content',d.id,d,true);made.push(d.content_id+' · '+t.name)});
           rerender();dlg.replaceChildren(h('h2',null,'Trial reels preparados'),h('div',{class:'okbox'},h('b',null,made.length+' tarea'+(made.length===1?'':'s')+' creada'+(made.length===1?'':'s')+' en Recorded para '+a.name+':'),h('ul',{style:'margin:6px 0 0 18px;padding:0'},made.map(x=>h('li',null,x)))),h('p',{class:'muted'},'Ya están en Edits MGMT para el editor. Cuando se aprueben, sus variaciones solo se ofrecerán para esta cuenta en Content Assignment.'),h('div',{class:'acts'},h('span'),h('button',{type:'button',class:'btn-acc',onclick:closeModal},'Listo')))},'Prepare trial reels',true)]}
     body.replaceChildren(crumbs(),...c.filter(Boolean))};
@@ -2002,7 +2067,7 @@ function render(){
   const tabs=$('#tabs');tabs.replaceChildren();let tab=null;if(page.tabs){tab=page.tabs.find(t=>t.id===st.tab)||page.tabs[0];page.tabs.forEach(t=>tabs.append(h('a',{href:'#'+st.route+'-'+t.id,class:t===tab?'on':'',onclick:e=>{e.preventDefault();go(st.route,t.id)}},t.dot?h('span',{class:'dot',style:'background:'+t.dot}):null,t.label)));tabs.style.display='flex'}else tabs.style.display='none';
   const v=$('#view');const keep=v.scrollTop,keepX=v.scrollLeft;v.replaceChildren();v.style.setProperty('--tbh','0px');if(S.role!=='model'&&['pipeline','plan','content'].includes(st.route)){const ab=alertBar();if(ab)v.append(ab)}const node=tab||page;const key=st.route+'/'+(tab?tab.id:'');
   if(S.slow)v.append(h('div',{class:'empty',style:'padding:8px 14px'},'The database is taking long to answer. Data shown may be incomplete.'));
-  document.body.classList.toggle('mview',node.view==='modelapp');if(node.view==='modelapp')modelApp(v);else if(node.view==='access')accessView(v);else if(node.view==='kimport')kimportView(v);else if(node.view==='list')listView(node.cfg,key,v);else if(node.view==='plan')planView(v);else if(node.view==='notes')notesView(v);else if(node.view==='calendar')calendarView(v);else if(node.view==='pipeline')pipelineView(node,v);else if(node.view==='assign')assignView(v);else if(node.view==='analytics')analyticsView(node,v);else if(node.view==='linkpages')linkPagesView(v);else if(node.view==='posting')postingView(node,v);else if(node.view==='board')boardView(node,v);
+  document.body.classList.toggle('mview',node.view==='modelapp');if(st.route==='knowledge'&&st.tab)kdocView(v,st.tab);else if(node.view==='modelapp')modelApp(v);else if(node.view==='access')accessView(v);else if(node.view==='kimport')kimportView(v);else if(node.view==='list')listView(node.cfg,key,v);else if(node.view==='plan')planView(v);else if(node.view==='notes')notesView(v);else if(node.view==='calendar')calendarView(v);else if(node.view==='pipeline')pipelineView(node,v);else if(node.view==='assign')assignView(v);else if(node.view==='analytics')analyticsView(node,v);else if(node.view==='linkpages')linkPagesView(v);else if(node.view==='posting')postingView(node,v);else if(node.view==='board')boardView(node,v);
   if(node.view==='modelapp'&&ma.reset){ma.reset=false;v.scrollTop=ma.restoreY||0;ma.restoreY=0}else{v.scrollTop=keep;v.scrollLeft=keepX}}
 $('#searchBtn').addEventListener('click',()=>{if(S.role!=='model')openSearch()});
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'&&S.role!=='model'){e.preventDefault();openSearch()}});
