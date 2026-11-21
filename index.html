@@ -708,13 +708,21 @@ function retractVars(r){if(!r||LIVE_ST.includes(r.status)||!r.id)return 0;const 
     const tasks=rows('actions').filter(t=>t.variation_ref===v.id);if(tasks.some(t=>isDone(t)))return;
     tasks.forEach(t=>put('actions',t.id,{...t,variation_ref:null},true));delQuiet('variations',v.id);n++});return n}
 function syncAllVars(){let n=0;rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});if(n)rerender()}
+/* estado del contenido según sus variaciones: alguna publicada y otras pendientes → Semi-Posted; todas publicadas → Posted */
+const V_GONE=['Posted','Archived','Not Done','Removed'];
+function contentAutoStatus(ref,cname){const c=(ref&&S.d.content.get(ref))||(cname&&rows('content').find(x=>x.content_id===cname));if(!c||!LIVE_ST.includes(c.status))return;
+  const vs=rows('variations').filter(v=>v.content_ref?v.content_ref===c.id:(v.content_id&&v.content_id===c.content_id));const np=vs.filter(v=>v.vstatus==='Posted').length,npend=vs.filter(v=>!V_GONE.includes(v.vstatus)).length;
+  let st=c.status;if(np>0)st=npend>0?'Semi-Posted':'Posted';else if(c.auto_post&&c.status!=='Approved')st='Approved';
+  if(st!==c.status)put('content',c.id,{...c,status:st,auto_post:np>0,status_changed:today()},true)}
 let inHook=false;
 function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHook=true;try{
+  if(c==='variations'&&(!prev||prev.vstatus!==row.vstatus))contentAutoStatus(row.content_ref,row.content_id);
   if(c==='content'){ensureVars(row);if(retractVars(row))rerender();if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
   if(c==='actions'){const a=row.account_id?S.d.accounts.get(row.account_id):accFind(arr(row.account)[0]);
     if(POST_TYPES.includes(row.action_type)&&row.variation_ref&&S.d.variations.has(row.variation_ref)){const v=S.d.variations.get(row.variation_ref);
       if(isDone(row)&&(v.vstatus!=='Posted'||(row.post_link&&v.ig_link!==row.post_link)))put('variations',v.id,{...v,vstatus:'Posted',posted:v.posted||row.due||today(),ig_link:row.post_link||v.ig_link||null},true);
-      else if(!isDone(row)&&isDone(prev)&&v.vstatus==='Posted')put('variations',v.id,{...v,vstatus:'Approved',posted:null},true)}
+      else if(!isDone(row)&&isDone(prev)&&v.vstatus==='Posted')put('variations',v.id,{...v,vstatus:'Approved',posted:null},true);
+      contentAutoStatus(v.content_ref,v.content_id)}
     if(a&&isDone(row)){const p={};
       if(row.action_type==='Health Check'&&(!a.health_checked||(row.due||today())>=a.health_checked)){if(arr(row.account_health).length)p.health=healthOne(row.account_health);if(row.account_status)p.status=row.account_status;p.health_checked=row.due||today()}
       if(row.action_type==='Reach Update'){const dd=row.due||today();const hasV=v=>v!=null&&v!=='';
