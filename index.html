@@ -1983,7 +1983,7 @@ function boardView(tab,root){const list=rows('tasks').filter(tab.f);root.append(
 /* ---------- model app (Content Hub) ---------- */
 const ma={screen:'home',plat:null,tab:'past',f:{},id:null,extra:null,reset:false,open:new Set(),up:{},scrolls:{}};
 const PENDING=['Instructions Added','Not Approved'];
-const PLATS=[{id:'ig',label:'Instagram',icon:'📸',color:'#8b46ff',test:r=>['Short Form','Stories'].includes(r.type)},{id:'yt',label:'YouTube',icon:'▶️',color:'#e5484d',test:r=>['Youtube','Youtube Long Form'].includes(r.type)},{id:'of',label:'OnlyFans',icon:'💎',color:'#2d7ff9',test:r=>OF_TYPES.includes(r.type)},{id:'tt',label:'TikTok',icon:'🎵',color:'#20b8b1',test:r=>r.type==='Tiktok'},{id:'tw',label:'Twitter',icon:'🐦',color:'#4aa8d8',test:r=>r.type==='Twitter'},{id:'p1',label:'Prioridad 1',icon:'⚡',color:'#ff6f2c',test:r=>[...arr(r.tags),...arr(r.model_tags)].some(t=>/prioridad\s*1/i.test(String(t)))}];
+const PLATS=[{id:'ig',label:'Instagram',icon:'📸',color:'#8b46ff',test:r=>['Short Form','Stories'].includes(r.type)},{id:'yt',label:'YouTube',icon:'▶️',color:'#e5484d',test:r=>['Youtube','Youtube Long Form'].includes(r.type)},{id:'of',label:'OnlyFans',icon:'💎',color:'#2d7ff9',test:r=>OF_TYPES.includes(r.type)},{id:'tt',label:'TikTok',icon:'🎵',color:'#20b8b1',test:r=>r.type==='Tiktok'},{id:'tw',label:'Twitter',icon:'🐦',color:'#4aa8d8',test:r=>r.type==='Twitter'},{id:'p1',label:'Prioridad 1',icon:'⚡',color:'#ff6f2c',test:r=>arr(r.model_tags).some(t=>/prioridad\s*1/i.test(String(t)))}];
 const PROP_ICON={'IG Reels or Carrusell':'🎬','OF':'💎','IG Stories':'📱','Youtube Long Form':'📺','Drive':'📁'};
 const todayIso=()=>iso(new Date());
 const daysLate=d=>Math.round((new Date(todayIso()+'T12:00')-new Date(d+'T12:00'))/864e5);
@@ -2045,7 +2045,7 @@ function modelApp(v){
   const T=todayIso();const pend=mine('content').filter(r=>PENDING.includes(r.status));
   const late=r=>!!r.due_date&&r.due_date<T,fut=r=>!!r.due_date&&r.due_date>T;
   const s=settings();const logo=(s.agency||'A').slice(0,1).toUpperCase();
-  const tagsOf=r=>[...arr(r.tags),...arr(r.model_tags)];
+  const tagsOf=r=>arr(r.model_tags);/* solo Model Tags: los Tags son internos de la agencia */
   const stats=h('div',{class:'ma-stats'},[[pend.length,'Pendientes'],[pend.filter(late).length,'Atrasados'],[pend.filter(fut).length,'Futuro']].map(([n,l])=>h('div',{class:'ma-stat'},h('b',null,n),h('span',null,l))));
   const hero=extra=>h('div',{class:'ma-hero'},h('div',{class:'ma-wrap'},h('div',{class:'ma-id'},h('span',{class:'ma-logo'},logo),h('div',null,h('div',{class:'ma-eyebrow'},'Contenido'),h('div',{class:'ma-name'},m.name)),h('button',{type:'button',class:'ma-out',onclick:()=>{if(S.role==='model')S.sb.auth.signOut();else go('accounts')}},S.role==='model'?'Salir':'Volver al CRM')),extra));
   const top=(left,mid,right)=>h('div',{class:'ma-top'},left,h('span',null,mid||''),right||h('span',{style:'width:60px'}));
