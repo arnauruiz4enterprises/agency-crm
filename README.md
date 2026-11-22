@@ -39,3 +39,7 @@ Las colecciones `actions`, `linkpages`, `trackinglinks` y `knowledge` son solo d
 ## Seguridad
 
 La seguridad la dan las reglas de Supabase (RLS): una modelo solo puede leer su contenido y crear propuestas suyas, aunque manipule la web. Nunca pongas la clave `service_role` en este repositorio.
+
+## Edits MGMT
+
+El editor descarga los archivos de la modelo en «Raw Files (Model)» y sube el vídeo editado en «Edited Content (Attachment)».
