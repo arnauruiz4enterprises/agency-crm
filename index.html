@@ -838,8 +838,8 @@ function richEditor(value,label,minH){const ed=h('div',{class:'rt rt-ed',content
   ed.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a');if(a&&(e.metaKey||e.ctrlKey))window.open(a.href,'_blank','noopener')});
   return {el:h('div',{class:'rt-wrap'},tools,linkRow,ed),ed,get:()=>htmlMd(ed)}}
 /* ---------- archivos (Supabase Storage, carpeta privada "proposals") ---------- */
-const FILE_BUCKET='proposals',FILE_MAX=50*1024*1024,FILE_MAX_N=20;
-const fmtSize=b=>b>=1048576?(b/1048576).toFixed(b>=104857600?0:1).replace(/\.0$/,'')+' MB':Math.max(1,Math.round(b/1024))+' KB';
+const FILE_BUCKET='proposals',FILE_MAX=1024*1024*1024,FILE_MAX_N=20;
+const fmtSize=b=>b>=1073741824?(b/1073741824).toFixed(1).replace(/\.0$/,'')+' GB':b>=1048576?(b/1048576).toFixed(b>=104857600?0:1).replace(/\.0$/,'')+' MB':Math.max(1,Math.round(b/1024))+' KB';
 const EXT_MIME={mov:'video/quicktime',mp4:'video/mp4',m4v:'video/x-m4v',webm:'video/webm',heic:'image/heic',heif:'image/heif',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'};
 const fileMime=f=>f.type||EXT_MIME[String(f.name||'').split('.').pop().toLowerCase()]||'';
 const isVideo=a=>/^video\//.test(a.type||'')||/\.(mov|mp4|m4v|webm)$/i.test(a.name||'');
