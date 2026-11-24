@@ -485,7 +485,7 @@ const arr=v=>Array.isArray(v)?v:(v==null||v===''?[]:[v]);
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const monday=d=>{d=new Date(d);const k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);d.setHours(0,0,0,0);return d};
 const addDays=(d,n)=>{d=new Date(d);d.setDate(d.getDate()+n);return d};
-function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
+function toast(m,ms){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',ms||2600)}
 function ink(hex){if(!hex)return'';const c=hex.replace('#','');const f=c.length===3?c.split('').map(x=>x+x).join(''):c;const r=parseInt(f.slice(0,2),16),g=parseInt(f.slice(2,4),16),b=parseInt(f.slice(4,6),16);return(r*299+g*587+b*114)/1000>140?'#0a0a0a':'#fff'}
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
@@ -543,11 +543,31 @@ const COLS=['models','accounts','content','steps','concepts','branding','project
 const S={d:{},db:null,mode:'loading',q:{}};
 COLS.forEach(c=>S.d[c]=new Map());
 const rows=c=>[...S.d[c].values()];
-let rT=null;const rerender=()=>{clearTimeout(rT);rT=setTimeout(render,40)};
+let VA_CACHE=new Map();let rT=null;const rerender=()=>{VA_CACHE=new Map();clearTimeout(rT);rT=setTimeout(render,40)};
 const soft=()=>{clearTimeout(rT);rT=setTimeout(()=>{st.keepPop=true;try{render()}finally{st.keepPop=false}},30)};
 function saveLocal(c){if(S.mode==='local')ls.set('crm:'+c,rows(c))}
 function clean(o){const r={};for(const k in o){if(k==='id'||o[k]===undefined)continue;r[k]=o[k]}return r}
-function put(c,id,data,quiet){const row={...data,id};const prev0=S.d[c].get(id);if(c==='content'&&S.role!=='model'&&S.loaded){const q=calcReq(row);row.reps_needed=q.reps;row.files_needed=q.files;if(!quiet&&row.status==='Not Approved'&&(!prev0||prev0.status!=='Not Approved')&&!String(row.reject_reason||'').trim())setTimeout(()=>toast('Vuelve a la app de la modelo. Escribe el “Motivo de rechazo” para que sepa qué corregir.'),300)}const prev=S.d[c].get(id);S.d[c].set(id,row);try{afterPut(c,row,prev)}catch(e){}if(!quiet)rerender();
+/* reglas de estado: lo que una tarea tiene que tener antes de avanzar. Solo frenan cambios hechos a mano
+   (los automáticos del propio CRM y la app de la modelo no pasan por aquí) */
+const R_ACC_TYPES=['Short Form','Stories','Youtube','Youtube Long Form'];
+const R_PLAY=['Instructions Added','Recorded','Edited','Not Approved','Approved','Semi-Posted','Posted'];
+const R_RAW=['Recorded','Edited','Not Approved','Approved','Semi-Posted','Posted'];
+const R_EDIT=['Edited','Approved','Semi-Posted','Posted'];
+const hasF=(L,link)=>arr(L).some(a=>a&&(a.path||a.url))||!!String(link||'').trim();
+function ruleErr(c,row,prev){
+  if(c==='content'){const st=row.status;const chg=!prev||prev.status!==st;const miss=[];
+    const need=(ok,label,was)=>{if(!ok&&(chg||was))miss.push(label)};
+    if(R_PLAY.includes(st)){if(R_ACC_TYPES.includes(row.type||'Short Form')){need(arr(row.accounts).length,'cuentas asignadas',prev&&arr(prev.accounts).length);need(arr(row.content_plan).length,'Content Plan',prev&&arr(prev.content_plan).length)}
+      need(row.due_date,'Due Date',prev&&prev.due_date)}
+    if(R_RAW.includes(st))need(hasF(row.raw_files,row.raw_drive),'contenido crudo (Raw Files o link de Raw Content)',prev&&hasF(prev.raw_files,prev.raw_drive));
+    if(R_EDIT.includes(st))need(hasF(row.edited_files,row.edited_drive),'contenido editado (Edited Content attachment o link)',prev&&hasF(prev.edited_files,prev.edited_drive));
+    /* al aprobar: un vídeo editado distinto por cada cuenta de la misma plataforma */
+    if(st==='Approved'&&chg&&!row.reps_dont_matter&&anyFiles(row).length){const nv=orderedVids(anyFiles(row)).length,nr=calcReq(row).reps;if(nv<nr)miss.push(nr+' vídeos editados distintos (hay '+nv+'; cada cuenta de una misma plataforma necesita el suyo)')}
+    if(miss.length)return (chg?'No se puede pasar a «'+st+'»':'No se puede quitar con la tarea en «'+st+'»')+': falta '+miss.join(', ')+'.'}
+  if(c==='actions'&&POST_TYPES.includes(row.action_type)&&isDone(row)&&!String(row.post_link||'').trim()&&(!prev||!isDone(prev)||String(prev.post_link||'').trim()))return 'No se puede marcar como hecha sin el link del post publicado (Post Link).';
+  return null}
+function put(c,id,data,quiet,force){if(!force&&!inHook&&S.role!=='model'&&S.loaded){const prv=S.d[c]&&S.d[c].get(id);const e=prv&&ruleErr(c,{...data,id},prv);if(e){toast(e,6000);rerender();const p=Promise.resolve(false);p.blocked=true;return p}}
+  VA_CACHE=new Map();const row={...data,id};const prev0=S.d[c].get(id);if(c==='content'&&S.role!=='model'&&S.loaded){const q=calcReq(row);row.reps_needed=q.reps;row.files_needed=q.files;if(!quiet&&row.status==='Not Approved'&&(!prev0||prev0.status!=='Not Approved')&&!String(row.reject_reason||'').trim())setTimeout(()=>toast('Vuelve a la app de la modelo. Escribe el “Motivo de rechazo” para que sepa qué corregir.'),300)}const prev=S.d[c].get(id);S.d[c].set(id,row);try{afterPut(c,row,prev)}catch(e){}if(!quiet)rerender();
   if(S.mode==='sb')return sbPut(c,row);
   if(S.mode==='db'){const p=c+'/'+id;S.q[p]=(S.q[p]||Promise.resolve()).then(()=>S.db.collection(c).doc(id).set(clean(row))).catch(e=>{toast('Could not save: '+((e&&e.code)||'error')+'. Check your access to this page.')});return S.q[p]}
   saveLocal(c);return Promise.resolve()}
@@ -591,7 +611,7 @@ const accCols=[C('pfp','Profile Picture','img',{w:110}),C('bio','Bio','text',{w:
 const projCols=[C('start','Start Date','date',{w:110}),C('due','Due Date','date',{w:110}),C('urgency','Urgency','select',{o:'urgency',w:110}),C('status','Status','select',{o:'project_status',w:190}),C('members','Project Member','multi',{from:()=>peopleNames(),free:1,w:220}),C('owner','Project Owner','select',{from:()=>peopleNames(),free:1,w:170}),C('ptype','Project Type','select',{o:'project_type',w:130}),C('description','Description','long',{w:240})];
 const taskCols=[C('project','Project','text',{w:160}),C('due','Due Date','date',{w:110}),C('description','Description','long',{w:260}),C('assignee','Task Assignee','multi',{from:()=>peopleNames(),free:1,w:200}),C('status','Status','select',{o:'task_status',w:120}),C('priority','Priority','select',{o:'priority',w:100}),C('completed','Completed Date','date',{w:120})];
 const stepCols=[C('description','Description','long',{w:360}),C('set_date','Set Date','date',{w:110}),C('due','Due Date','date',{w:110}),C('status','Status','select',{o:'task_status',w:120})];
-const varCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('_preview','Edited Content (from Content)','text',{ro:1,w:110,calc:r=>varHas(r)||(srcOf(r)||{}).edited_thumb?'1':null,view:r=>{if(!(varHas(r)||(srcOf(r)||{}).edited_thumb))return h('span',{class:'muted'},'—');const t=thumb(r);const on=!!varStFile(r);return h('button',{type:'button',class:'plain vprev'+(vOff(r)?' off':''),title:on?'Ver vídeo':'Abrir link del vídeo',onclick:e=>{e.stopPropagation();playVar(r)},ondblclick:e=>e.stopPropagation()},t)}}),C('vstatus','Status','select',{o:'var_status',w:110}),C('ig_link','Post Link','url',{w:200}),C('file','Variation File (link)','url',{w:200}),C('seen','Variation Seen','select',{o:'seen',w:110}),C('views','Views','number',{w:110,sum:1}),C('posted','Posted Date','date',{w:110}),C('removed','Removed? Why?','select',{o:'removed',w:140}),C('removal_date','Removal Date','date',{w:110}),C('doubled','Doubled Down','number',{w:100}),C('type','Content Type','select',{o:'content_type',w:130}),C('vertical','Vertical','select',{o:'vertical',free:1,w:130}),C('trial_reels','Trial Reels','check',{w:90}),C('instructions','Instructions','long',{w:260}),C('tags','Tags','multi',{w:140}),C('edited_drive','Edited Content (Drive Link)','url',{w:200})];
+const varCols=[C('accounts','Accounts','multi',{from:accNames,acc:1,w:220}),C('_preview','Edited Content (from Content)','text',{ro:1,w:110,calc:r=>varHas(r)||(srcOf(r)||{}).edited_thumb?'1':null,view:r=>{if(!(varHas(r)||(srcOf(r)||{}).edited_thumb))return h('span',{class:'muted'},'—');const t=thumb(r);const on=!!varStFile(r);return h('button',{type:'button',class:'plain vprev'+(vOff(r)?' off':''),title:on?'Ver vídeo':'Abrir link del vídeo',onclick:e=>{e.stopPropagation();playVar(r)},ondblclick:e=>e.stopPropagation()},t)}}),C('vstatus','Status','select',{o:'var_status',w:110}),C('ig_link','Post Link','url',{w:200}),C('file','Variation File (link)','url',{w:200}),C('seen','Variation Seen','select',{o:'seen',w:110}),C('views','Views','number',{w:110,sum:1}),C('posted','Posted Date','date',{w:110}),C('removed','Removed? Why?','select',{o:'removed',w:140}),C('removal_date','Removal Date','date',{w:110}),C('doubled','Doubled Down','number',{w:100}),C('type','Content Type','select',{o:'content_type',w:130}),C('vertical','Vertical','select',{o:'vertical',free:1,w:130}),C('trial_reels','Trial Reels','check',{w:90}),C('instructions','Instructions','long',{w:260}),C('tags','Tags','multi',{w:140}),C('_raw_drive','Raw Content (Drive Link) (from Content)','url',{ro:1,w:220,calc:r=>(srcOf(r)||{}).raw_drive||null}),C('_raw_files','Raw Files (from Content)','files',{ro:1,w:170,calc:r=>{const c=srcOf(r);return c&&arr(c.raw_files).length?c.raw_files:null},view:(r,v)=>v?filesCell(v,3,false):h('span',{class:'muted'},'—')}),C('_ed_drive','Edited Content (Drive Link) (from Content)','url',{ro:1,w:220,calc:r=>(srcOf(r)||{}).edited_drive||null}),C('_ref','Reference Link (from Content)','url',{ro:1,w:200,calc:r=>(srcOf(r)||{}).reference_link||null}),C('edited_drive','Edited Content (Drive Link)','url',{w:200})];
 const ST_ACTIVE=['Raw Content','Template','To Do','Instructions Added'];
 const ST_OPEN=['Raw Content','Template','To Do','Instructions Added','Recorded','Edited','Approved','Not Approved','Semi-Posted'];
 const OF_TYPES=['OF Post','OF Story','OF Custom Content','Chatting Sales Content'];
@@ -679,11 +699,14 @@ function recordModal(cfg,row,isNew){
     form.append(h('div',{class:'f'},h('label',{for:id},col.l),h('div',null,inp)))});
   function collect(){form.querySelectorAll('[data-k]').forEach(i=>{const k=i.dataset.k,t=i.dataset.t;let v=i.value;if(t==='check')v=i.checked;else if(t==='multi')v=v.split(',').map(s=>s.trim()).filter(Boolean);else if(t==='number'||t==='pct')v=v===''?null:+v;else if(v==='')v=null;draft[k]=v});Object.entries(richGet).forEach(([k,g])=>{const v=g();draft[k]=v===''?null:v})}
   /* registros existentes: cada cambio se guarda al momento, igual que editando la celda en la tabla; cerrar (✕, Esc, clic fuera) nunca descarta nada */
-  let base={...row};function commit(){collect();const live=S.d[cfg.col].get(row.id);if(!live)return 0;const ch={};cols.forEach(c=>{if(c.t==='files')return;const a=draft[c.k]??null,b=base[c.k]??null;if(JSON.stringify(a)!==JSON.stringify(b))ch[c.k]=a});const n=Object.keys(ch).length;if(n){base={...base,...ch};put(cfg.col,row.id,{...live,...ch})}return n}
-  function save(){if(!isNew){commit();closeModal();return}collect();const live=S.d[cfg.col].get(draft.id);if(live)filesK.forEach(k=>{draft[k]=live[k]??null});
+  let base={...row};function commit(reopen=true){collect();const live=S.d[cfg.col].get(row.id);if(!live)return 0;const ch={};cols.forEach(c=>{if(c.t==='files')return;const a=draft[c.k]??null,b=base[c.k]??null;if(JSON.stringify(a)!==JSON.stringify(b))ch[c.k]=a});const n=Object.keys(ch).length;if(n){const r=put(cfg.col,row.id,{...live,...ch});if(r&&r.blocked){if(reopen){dlg._onClose=null;setTimeout(()=>{const L=S.d[cfg.col].get(row.id);if(L)recordModal(cfg,L,false)},0)}return 0}base={...base,...ch}}return n}
+  function save(){if(!isNew){commit();closeModal();return}collect();{const e=ruleErr(cfg.col,draft,null);if(e){toast(e,6000);return}}const live=S.d[cfg.col].get(draft.id);if(live)filesK.forEach(k=>{draft[k]=live[k]??null});
     put(cfg.col,draft.id,draft);closeModal();toast('Saved')}
+  /* campos de solo lectura (calculados o traídos de otra tabla, p. ej. el Raw Content del contenido en Variations): se ven al abrir el registro */
+  if(!isNew)cfg.cols.filter(c=>c.ro).forEach(col=>{let vv;try{if(col.t==='files'&&!col.view){const x=col.calc?col.calc(row):row[col.k];vv=arr(x).length?filesCell(x,12,false):h('span',{class:'muted'},'—')}else vv=cellView(col,row)}catch(e){vv=h('span',{class:'muted'},'—')}
+    form.append(h('div',{class:'f'},h('label',null,col.l+' 🔒'),h('div',{class:'ro-val',style:'min-height:30px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;overflow-wrap:anywhere'},vv)))});
   form.append(h('div',{class:'acts'},isNew?h('span'):h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',class:'btn-danger',onclick:()=>confirmDlg('Delete this record? This cannot be undone.','Delete',()=>del(cfg.col,row.id))},'Delete'),h('button',{type:'button',onclick:()=>{const d=dupRow(cfg,S.d[cfg.col].get(row.id)||row);closeModal();recordModal(cfg,d,true)}},'⧉ Duplicar')),isNew?h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',onclick:closeModal},'Cancel'),h('button',{type:'submit',class:'btn-acc'},'Save')):h('span',{style:'display:flex;gap:8px;align-items:center'},h('span',{class:'muted',style:'font-size:12px'},'Los cambios se guardan solos'),h('button',{type:'submit',class:'btn-acc'},'Cerrar'))));
-  const dlg=h('div',{class:'dlg'},h('h2',null,isNew?'New record':(row[cfg.primary]||'Record'),h('button',{type:'button',onclick:closeModal,'aria-label':'Close'},'✕')),form);if(!isNew)dlg._onClose=()=>{commit()};openModal(dlg)}
+  const dlg=h('div',{class:'dlg'},h('h2',null,isNew?'New record':(row[cfg.primary]||'Record'),h('button',{type:'button',onclick:closeModal,'aria-label':'Close'},'✕')),form);if(!isNew)dlg._onClose=()=>{commit(false)};openModal(dlg)}
 function newRecord(cfg,preset){const m=model();const base={id:uid(),...(cfg.global?{}:{model:m&&m.id}),...(cfg.newRow?cfg.newRow():{}),...(preset||{})};
   if(cfg.col==='content'){const n=nextNum(base.model,base.type);base.sid=n;base.content_id=(m?m.name:'')+'-'+base.type+'-'+n}
   recordModal(cfg,base,true)}
@@ -712,7 +735,7 @@ function retractVars(r){if(!r||LIVE_ST.includes(r.status)||!r.id)return 0;const 
   rows('variations').forEach(v=>{if(!String(v.id).startsWith(pre)||v.vstatus!=='Approved'||v.ig_link||v.posted||v.views)return;
     const tasks=rows('actions').filter(t=>t.variation_ref===v.id);if(tasks.some(t=>isDone(t)))return;
     tasks.forEach(t=>put('actions',t.id,{...t,variation_ref:null},true));delQuiet('variations',v.id);n++});return n}
-function syncAllVars(){let n=0;rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});if(n)rerender()}
+function syncAllVars(){let n=0;rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});VA_CACHE=new Map();rows('content').forEach(r=>{if(LIVE_ST.includes(r.status)&&anyFiles(r).length>1)n+=persistVarFiles(r)});if(n)rerender()}
 /* estado del contenido según sus variaciones: alguna publicada y otras pendientes → Semi-Posted; todas publicadas → Posted */
 const V_GONE=['Posted','Archived','Not Done','Removed'];
 function contentAutoStatus(ref,cname){const c=(ref&&S.d.content.get(ref))||(cname&&rows('content').find(x=>x.content_id===cname));if(!c||!LIVE_ST.includes(c.status))return;
@@ -722,7 +745,7 @@ function contentAutoStatus(ref,cname){const c=(ref&&S.d.content.get(ref))||(cnam
 let inHook=false;
 function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHook=true;try{
   if(c==='variations'&&(!prev||prev.vstatus!==row.vstatus))contentAutoStatus(row.content_ref,row.content_id);
-  if(c==='content'){ensureVars(row);if(retractVars(row))rerender();if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
+  if(c==='content'){ensureVars(row);if(retractVars(row))rerender();if(LIVE_ST.includes(row.status))persistVarFiles(row);if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
   if(c==='actions'){const a=row.account_id?S.d.accounts.get(row.account_id):accFind(arr(row.account)[0]);
     if(POST_TYPES.includes(row.action_type)&&row.variation_ref&&S.d.variations.has(row.variation_ref)){const v=S.d.variations.get(row.variation_ref);
       if(isDone(row)&&(v.vstatus!=='Posted'||(row.post_link&&v.ig_link!==row.post_link)))put('variations',v.id,{...v,vstatus:'Posted',posted:v.posted||row.due||today(),ig_link:row.post_link||v.ig_link||null},true);
@@ -926,7 +949,7 @@ async function downloadFile(a){if(a&&a.url&&!a.path){window.open(a.url.replace(/
 const FED_LIVE=new Set();
 function filesEditor(colName,id,k){const el=h('div',{class:'fed'});const F={menu:null,conf:null,ren:null,ups:[]};
   const cur=()=>S.d[colName].get(id)||{};const list=()=>arr(cur()[k]).filter(a=>a&&(a.path||a.url));const fk=a=>a.path||a.url;const save=L=>patch(colName,id,{[k]:L.length?L:null});
-  const remove=a=>{save(list().filter(x=>fk(x)!==fk(a)));removeFiles([a]);F.conf=null;F.menu=null;toast('Archivo quitado');draw()};
+  const remove=a=>{const r=save(list().filter(x=>fk(x)!==fk(a)));F.conf=null;F.menu=null;if(r&&r.blocked){draw();return}removeFiles([a]);toast('Archivo quitado');draw()};
   const rename=(a,v)=>{let nn=String(v||'').trim();F.ren=null;if(!nn||nn===a.name){draw();return}const ext=(String(a.name||'').match(/\.[A-Za-z0-9]{1,5}$/)||[''])[0];if(ext&&!nn.toLowerCase().endsWith(ext.toLowerCase()))nn+=ext;save(list().map(x=>fk(x)===fk(a)?{...x,name:nn}:x));draw()};
   const fin=h('input',{type:'file',multiple:true,accept:'image/*,video/*',class:'sr-file',id:'fed_'+id+'_'+k,onchange:e=>{const add=[...e.target.files];e.target.value='';const owner=cur().model||'sin-modelo';
     add.forEach(file=>{const mt=fileMime(file);const u={file,p:0,st:'up'};F.ups.push(u);
@@ -1233,7 +1256,7 @@ function bulkEdit(cfg,vs){const ids=[...vs.sel];const cols=cfg.allCols.filter(c=
   fsel.addEventListener('change',draw);draw();
   const apply=()=>{const col=cols.find(c=>c.k===fsel.value);let cnt=0;ids.forEach(id=>{const r=S.d[cfg.col].get(id);if(!r||(col.acc&&r.acc_lock))return;let v=val;
       if(col.t==='multi'){const cur=arr(r[col.k]);const add=arr(val);v=mode==='replace'?add:mode==='remove'?cur.filter(x=>!add.includes(x)):[...new Set([...cur,...add])]}
-      put(cfg.col,id,{...r,[col.k]:v},true);cnt++});closeModal();rerender();toast(col.l+' actualizado en '+cnt+' registros')};
+      {const rr=put(cfg.col,id,{...r,[col.k]:v},true);if(!(rr&&rr.blocked))cnt++}});closeModal();rerender();toast(col.l+' actualizado en '+cnt+' registros')};
   openModal(h('div',{class:'dlg',style:'width:min(560px,100%)'},h('h2',null,'Cambiar '+ids.length+' registros',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
     h('div',{class:'f'},h('label',{for:'bk_field'},'Campo'),fsel),area,
     h('div',{class:'acts'},h('span'),h('span',{style:'display:flex;gap:8px'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'button',class:'btn-acc',onclick:apply},'Aplicar')))))}
@@ -1423,9 +1446,36 @@ function keepPrev(c){if(!PURGE_ST.includes(c.status))return true;
   return rows('variations').some(v=>v.content_ref===c.id&&(v.vstatus==='Posted'?varPrevOn(v):(v.vstatus==='Approved'&&c.status==='Posted')))}
 /* el archivo de Storage que toca enseñar para esta variación (null si ya pasó su ventana) */
 const anyFiles=c=>arr(c&&c.edited_files).filter(a=>a&&(a.path||a.url));
-/* de los vídeos del contenido, el que corresponde a esta variación (Variation-2 → “2.mp4”, “458 2.mp4”, “R314-2.mp4”…) */
-function pickVarFile(v,L){const vids=L.filter(isVideo);const P=vids.length?vids:L;if(P.length<2)return P[0]||null;const n=+((String(v.name||'').match(/Variation-(\d+)/)||[])[1]||0);if(!n)return P[0];
+/* ===== reparto de vídeos editados entre cuentas =====
+   Regla: dentro de una misma plataforma, cada cuenta recibe un vídeo editado DISTINTO (1ª cuenta de Instagram → vídeo 1, 2ª → vídeo 2…).
+   Entre plataformas distintas se repite (la 1ª de TikTok repostea el vídeo 1). El vídeo elegido se guarda en la variación (file_key)
+   para que no cambie nunca aunque luego se reordenen cuentas o archivos. Si no hay vídeos suficientes, la variación se queda sin vídeo. */
+const fKey=a=>a&&(a.path||a.url);
+const fileNum=a=>{const b=String(a.name||'').replace(/\.[a-z0-9]+$/i,'').trim();const m=b.match(/(?:^|[^0-9])(\d{1,2})$/)||b.match(/^(\d{1,2})(?:[^0-9]|$)/);return m?+m[1]:null};
+function orderedVids(L){const vids=L.filter(isVideo);const P=vids.length?vids:L.slice();const nums=P.map(fileNum);
+  return nums.every(n=>n!=null)&&new Set(nums).size===nums.length?P.map((a,i)=>[a,nums[i]]).sort((x,y)=>x[1]-y[1]).map(x=>x[0]):P}
+const vPlatKey=v=>vPlat(v)||'?';
+function varSlot(v,c){const a=v.account_id&&S.d.accounts.get(v.account_id);if(!a||!c)return null;const p=a.platform||'?';const same=[];
+  arr(c.accounts).forEach(l=>{const x=accFind(l);if(x&&(x.platform||'?')===p&&!same.includes(x.id))same.push(x.id)});const k=same.indexOf(a.id);return k<0?null:k}
+function oldPick(v,P){if(P.length<2)return P[0]||null;const n=+((String(v.name||'').match(/Variation-(\d+)/)||[])[1]||0);if(!n)return P[0];
   const base=a=>String(a.name||'').replace(/\.[a-z0-9]+$/i,'').trim();return P.find(a=>new RegExp('(^|[^0-9])'+n+'$').test(base(a)))||P.find(a=>new RegExp('^'+n+'([^0-9]|$)').test(base(a)))||P[(n-1)%P.length]}
+function contentVars(c){if(!VA_CACHE.has('__vars')){const M=new Map();rows('variations').forEach(v=>{const k=v.content_ref||('cid:'+v.model+':'+v.content_id);if(!M.has(k))M.set(k,[]);M.get(k).push(v)});VA_CACHE.set('__vars',M)}const M=VA_CACHE.get('__vars');return [...(M.get(c.id)||[]),...(M.get('cid:'+c.model+':'+c.content_id)||[])]}
+function varAssign(c){const ck=c.id;if(VA_CACHE.has(ck))return VA_CACHE.get(ck);const out=new Map();const P=orderedVids(anyFiles(c));VA_CACHE.set(ck,out);if(!P.length)return out;
+  const keys=new Map(P.map(f=>[fKey(f),f]));const used=new Map();const take=(v,f)=>{out.set(v.id,f);const p=vPlatKey(v);if(!used.has(p))used.set(p,new Set());used.get(p).add(fKey(f))};
+  const free=(v,pref)=>{const u=used.get(vPlatKey(v))||new Set();if(pref&&!u.has(fKey(pref)))return pref;return P.find(f=>!u.has(fKey(f)))||null};
+  const vs=contentVars(c);const fixed=v=>v.file_key&&keys.has(v.file_key);
+  vs.filter(fixed).forEach(v=>take(v,keys.get(v.file_key)));
+  if(!VA_CACHE.has('__live')){const L=new Set();rows('actions').forEach(t=>{if(t.variation_ref&&(isDone(t)||t.status==='Scheduled'))L.add(t.variation_ref)});VA_CACHE.set('__live',L)}const LV=VA_CACHE.get('__live');
+  const live=v=>v.vstatus==='Posted'||LV.has(v.id);
+  /* las que ya se publicaron o programaron antes de esta regla: se respeta el vídeo que se usó */
+  vs.filter(v=>!fixed(v)&&live(v)).forEach(v=>{const f=oldPick(v,P);if(f)take(v,f)});
+  vs.filter(v=>!fixed(v)&&!live(v)).sort((a,b)=>(varSlot(a,c)??99)-(varSlot(b,c)??99)).forEach(v=>{const k=varSlot(v,c);const f=free(v,k!=null?P[k]:null);out.set(v.id,f);if(f)take(v,f)});
+  return out}
+function pickVarFile(v,L){const c=srcOf(v);if(!c)return orderedVids(L)[0]||null;const m=varAssign(c);return m.has(v.id)?m.get(v.id):oldPick(v,orderedVids(L))}
+/* guarda en cada variación el vídeo que le toca, para que quede fijo */
+function persistVarFiles(c){if(!c||S.role==='model'||!S.loaded)return 0;const m=varAssign(c);let n=0;m.forEach((f,id)=>{const v=S.d.variations.get(id);const k=fKey(f)||null;if(v&&k&&v.file_key!==k){put('variations',id,{...v,file_key:k},true);n++}});return n}
+/* variaciones de la misma plataforma que acabarían con el mismo vídeo, o sin vídeo */
+function varDupWarn(v){const c=srcOf(v);if(!c||!anyFiles(c).length)return null;const m=varAssign(c);if(m.has(v.id)&&!m.get(v.id))return 'Faltan vídeos editados: esta cuenta no tiene un vídeo propio (la tarea tiene menos editados que cuentas de '+vPlatKey(v)+').';return null}
 function varStFile(v){const c=v&&srcOf(v);if(!c)return null;const L=anyFiles(c);if(!L.length)return null;const f=pickVarFile(v,L);if(!f)return null;if(f.url&&!f.path)return f;return varPrevOn(v)?f:null}
 function vidThumb(url,isImg,W0){return new Promise(res=>{let done=false;const el=isImg?new Image():document.createElement('video');
   const fin=x=>{if(done)return;done=true;clearTimeout(to);try{if(!isImg){el.removeAttribute('src');el.load()}}catch(e){}res(x)};const to=setTimeout(()=>fin(null),25000);
@@ -1464,9 +1514,9 @@ async function previewSweep(force){if(S.role!=='admin'||!S.sb||!S.loaded)return 
 const varFile=v=>v&&(v.file||v.edited_drive||(srcOf(v)||{}).edited_drive)||null;
 const varHas=v=>!!(v&&(varStFile(v)||varFile(v)));
 const vOff=v=>!varStFile(v)&&!!(srcOf(v)||{}).edited_thumb;
-function thumb(v){const sf=varStFile(v);const c=v&&srcOf(v);const tn=c&&c.edited_thumb;if(tn)return h('img',{src:tn,alt:'',loading:'lazy'});const u=sf&&isVideo(sf)?(sf.url||signedUrl(sf.path)):null;if(u)return vthNode(sf.path||sf.url,u);if(sf)return'▶';const f=varFile(v);const id=driveId(f);if(!f)return'＋';if(id){const im=h('img',{src:'https://drive.google.com/thumbnail?id='+id+'&sz=w120',alt:'',loading:'lazy',referrerpolicy:'no-referrer'});im.addEventListener('error',()=>im.replaceWith('▶'));return im}return'▶'}
+function thumb(v){const w=varDupWarn(v);if(w)return h('span',{title:w,'aria-label':w},'⚠️');const sf=varStFile(v);const c=v&&srcOf(v);const tn=c&&c.edited_thumb;if(tn)return h('img',{src:tn,alt:'',loading:'lazy'});const u=sf&&isVideo(sf)?(sf.url||signedUrl(sf.path)):null;if(u)return vthNode(sf.path||sf.url,u);if(sf)return'▶';const f=varFile(v);const id=driveId(f);if(!f)return'＋';if(id){const im=h('img',{src:'https://drive.google.com/thumbnail?id='+id+'&sz=w120',alt:'',loading:'lazy',referrerpolicy:'no-referrer'});im.addEventListener('error',()=>im.replaceWith('▶'));return im}return'▶'}
 function playVar(v){const sf=varStFile(v);if(sf&&(S.sb||sf.url)){(sf.url&&!sf.path?Promise.resolve({data:{signedUrl:sf.url}}):S.sb.storage.from(FILE_BUCKET).createSignedUrl(sf.path,3600)).then(({data})=>{if(!data||!data.signedUrl)return playLink(v);const lk=varFile(v);
-    openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,v.name,h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),isVideo(sf)?h('video',{src:data.signedUrl,controls:true,autoplay:true,playsinline:true,style:'width:100%;max-height:70vh;background:#000'}):h('img',{src:data.signedUrl,alt:'',style:'width:100%;max-height:70vh;object-fit:contain;background:#000'}),
+    openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,v.name+(sf.name?' · '+sf.name:''),h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),isVideo(sf)?h('video',{src:data.signedUrl,controls:true,autoplay:true,playsinline:true,style:'width:100%;max-height:70vh;background:#000'}):h('img',{src:data.signedUrl,alt:'',style:'width:100%;max-height:70vh;object-fit:contain;background:#000'}),
       h('div',{style:'margin-top:8px;display:flex;gap:14px;flex-wrap:wrap'},h('a',{href:'#',onclick:e=>{e.preventDefault();downloadFile(sf)}},'Descargar ⬇'),lk?h('a',{href:lk,target:'_blank',rel:'noopener'},(/dropbox/i.test(lk)?'Abrir en Dropbox':'Abrir link')+' ↗'):null)))});return}
   playLink(v)}
 function playLink(v){const f=varFile(v);if(!f)return toast('Esta variación aún no tiene link de vídeo');const id=driveId(f);let body;
@@ -1477,7 +1527,7 @@ function playLink(v){const f=varFile(v);if(!f)return toast('Esta variación aún
 const taskAcc=(t,a)=>t.account_id?t.account_id===a.id:arr(t.account).some(l=>{const f=accFind(l);return f&&f.id===a.id});
 const postTasks=()=>rows('actions').filter(t=>POST_TYPES.includes(t.action_type));
 function assignable(a,kind,exceptTask){const taken=new Set(postTasks().filter(t=>t.variation_ref&&(!exceptTask||t.id!==exceptTask)).map(t=>t.variation_ref));
-  return rows('variations').filter(v=>(v.account_id?v.account_id===a.id:arr(v.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}))&&v.vstatus==='Approved'&&!taken.has(v.id)&&(()=>{const c=v.content_ref&&S.d.content.get(v.content_ref);return !(c&&!LIVE_ST.includes(c.status))&&(kind==='SR'?v.type==='Stories':v.type!=='Stories'&&(kind==='TR'?!!v.trial_reels:(!v.trial_reels&&(v.trial_set||!(c&&c.trial_reels)))))})())}
+  return rows('variations').filter(v=>(v.account_id?v.account_id===a.id:arr(v.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}))&&v.vstatus==='Approved'&&!taken.has(v.id)&&!varDupWarn(v)&&(()=>{const c=v.content_ref&&S.d.content.get(v.content_ref);return !(c&&!LIVE_ST.includes(c.status))&&(kind==='SR'?v.type==='Stories':v.type!=='Stories'&&(kind==='TR'?!!v.trial_reels:(!v.trial_reels&&(v.trial_set||!(c&&c.trial_reels)))))})())}
 function varPicker(a,kind,state,exceptTask){const q=h('input',{class:'search',placeholder:'Search variations…','aria-label':'Buscar variación'});const box=h('div',{class:'vpick'});
   const draw=()=>{const list=assignable(a,kind(),exceptTask);const s=q.value.trim().toLowerCase();const vis=list.filter(v=>!s||[v.name,v.vertical].join(' ').toLowerCase().includes(s));
     if(state.v&&!list.some(v=>v.id===state.v))state.v=null;
@@ -1501,7 +1551,7 @@ function editTaskDlg(t){const a=t.account_id?S.d.accounts.get(t.account_id):accF
   const due=h('input',{id:'et_due',type:'date',value:t.due||'',required:true});const stSel=h('select',{id:'et_st'},Object.keys(O.posting_status).map(x=>h('option',{value:x,selected:x===(t.status||'To Do')},x)));const link=h('input',{id:'et_link',type:'url',value:t.post_link||'',placeholder:'https://…'});
   const varBox=h('div');const showVar=()=>{if(state.v&&!state.pick){const v=S.d.variations.get(state.v);varBox.replaceChildren(h('span',{class:'chip g'},v?v.name:(t.variation_id||'—')),' ',varHas(v)?h('button',{type:'button',class:'plain',onclick:()=>playVar(v)},'▶ ver'):null,' ',h('button',{type:'button',class:'plain',onclick:()=>{state.pick=true;showVar()}},'change'))}else{const p=varPicker(a,()=>kind,state,t.id);varBox.replaceChildren(p.el)}};showVar();
   /* cada cambio se guarda al momento; cerrar (✕, Esc, clic fuera) nunca descarta nada */
-  let snap=JSON.stringify([t.status||'To Do',t.post_link||'',t.due||'',t.variation_ref||null]);const commit=()=>{if(!due.value)return;const now=JSON.stringify([stSel.value,link.value.trim(),due.value,state.v||null]);if(now===snap)return;snap=now;const live=S.d.actions.get(t.id)||t;saveTask({...live,status:stSel.value,post_link:link.value.trim()||null},a,kind,state.v,due.value)};
+  let snap=JSON.stringify([t.status||'To Do',t.post_link||'',t.due||'',t.variation_ref||null]);const commit=()=>{if(!due.value)return;const now=JSON.stringify([stSel.value,link.value.trim(),due.value,state.v||null]);if(now===snap)return;const old=snap;snap=now;const live=S.d.actions.get(t.id)||t;const r=saveTask({...live,status:stSel.value,post_link:link.value.trim()||null},a,kind,state.v,due.value);if(r&&r.blocked){snap=old;stSel.value=live.status||'To Do'}};
   [stSel,link,due].forEach(x=>x.addEventListener('change',commit));
   const dlg=h('div',{class:'dlg',style:'width:min(640px,100%)'},h('h2',null,'Edit task',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
     miss?h('div',{style:'border:1px solid var(--line);background:var(--bad-bg);padding:10px 12px;margin-bottom:10px'},h('div',{style:'font-size:11px;letter-spacing:.06em;font-weight:700'},'🛑 WHY INCOMPLETE'),h('div',{class:'muted',style:'margin-top:6px;font-size:12px'},'Reasoning of Incomplete Task'),h('b',null,t.reasoning||(t.variation_ref?'Sin motivo indicado todavía':'No content available')),h('div',{class:'muted',style:'margin-top:6px;font-size:12px'},'Justification (extra details)'),h('div',null,t.justification||'—')):null,
@@ -1824,7 +1874,7 @@ document.addEventListener('paste',e=>{if(gTyping()||!GS||gBusy())return;const R=
     const last={id:allIds[Math.min(allIds.length-1,r0+gh-1)],k:allK[Math.min(allK.length-1,c0+gw-1)]};GS.b=last}
   gApply(GS.key,cells)});
 document.addEventListener('keydown',e=>{if(gBusy())return;const mod=e.metaKey||e.ctrlKey;
-  if(mod&&!e.shiftKey&&e.key.toLowerCase()==='z'&&gUndo.length){e.preventDefault();const u=gUndo.pop();u.forEach(({c,id,prev})=>{const cur=S.d[c].get(id);if(cur)put(c,id,{...cur,...prev},true)});rerender();setTimeout(paintSel,0);toast('Deshecho');return}
+  if(mod&&!e.shiftKey&&e.key.toLowerCase()==='z'&&gUndo.length){e.preventDefault();const u=gUndo.pop();u.forEach(({c,id,prev})=>{const cur=S.d[c].get(id);if(cur)put(c,id,{...cur,...prev},true,true)});rerender();setTimeout(paintSel,0);toast('Deshecho');return}
   if(!GS)return;
   if((e.key==='Delete'||e.key==='Backspace')&&!mod){const R=gRect();if(!R)return;e.preventDefault();const cells=[];R.ids.forEach(id=>R.ks.forEach(k=>cells.push({id,k,v:''})));gApply(GS.key,cells);return}
   if(e.key==='Escape'&&document.querySelector('.cell.csel')){GS.b={...GS.a};paintSel();return}
