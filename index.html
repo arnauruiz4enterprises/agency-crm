@@ -350,6 +350,7 @@ body.mview .dlg .btn-acc{color:#fff;background:#232a4a;border-color:#232a4a}
 .ma-badges{float:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .ma-badge{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--ma-redbg);color:var(--ma-red);font-weight:600;white-space:nowrap}
 .ma-badge.f{background:#e8f0ff;color:#2d7ff9}
+.ma-badge.today{background:#e3f6e5;color:#1e7b34}
 .ma-card .t{font-weight:600;margin-top:10px}
 .ma-card .n{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
 .ma-card .s{font-size:12px;color:var(--ma-sub)}
@@ -2124,14 +2125,14 @@ function modelApp(v){
     const p=PLATS.find(x=>x.id===ma.plat)||PLATS[0];const all=pend.filter(p.test);
     root.append(top(back(()=>maNav({screen:'home'})),p.label+' ('+all.length+')'),hero(stats),w);
     /* Prioridad 1: se ve todo junto, sin separar por fecha (antes una tarea prioritaria con fecha futura quedaba escondida en «Futuro») */
-    const split=p.id!=='p1';const inTab=(r,k)=>r.status==='Not Approved'?k!=='future':k==='future'?fut(r):!fut(r);
+    const split=false;/* una sola lista para todo: lo más atrasado arriba, lo futuro abajo */const inTab=(r,k)=>r.status==='Not Approved'?k!=='future':k==='future'?fut(r):!fut(r);
     if(split)w.append(h('div',{class:'ma-seg'},[['past','Pasado/Hoy'],['future','Futuro']].map(([k,l])=>{const n=all.filter(r=>inTab(r,k)).length;return h('button',{type:'button',class:ma.tab===k?'on':'',onclick:()=>{ma.tab=k;ma.f={};rerender()}},l+(n?' ('+n+')':''))})));
     const base=split?all.filter(r=>inTab(r,ma.tab)):all;
     const F=[['type','Tipo',r=>[r.type]],['vertical','Vertical',r=>[r.vertical]],['country','País',r=>[r.country]],['tag','Tag',tagsOf]];
     w.append(h('div',{class:'ma-filters'},F.map(([k,l,get])=>{const vals=[...new Set(base.flatMap(get).filter(Boolean))].sort();return h('select',{'aria-label':l,onchange:e=>{ma.f[k]=e.target.value;rerender()}},h('option',{value:''},l),vals.map(x=>h('option',{value:x,selected:ma.f[k]===x},x)))})));
-    const list=base.filter(r=>F.every(([k,,get])=>!ma.f[k]||get(r).includes(ma.f[k]))).sort((a,b)=>(b.status==='Not Approved')-(a.status==='Not Approved')||(p.id==='of'?(OF_TYPES.indexOf(a.type)-OF_TYPES.indexOf(b.type)):0)||String(a.due_date||'9').localeCompare(String(b.due_date||'9')));
+    const list=base.filter(r=>F.every(([k,,get])=>!ma.f[k]||get(r).includes(ma.f[k]))).sort((a,b)=>(b.status==='Not Approved')-(a.status==='Not Approved')||String(a.due_date||'9').localeCompare(String(b.due_date||'9'))||(p.id==='of'?(OF_TYPES.indexOf(a.type)-OF_TYPES.indexOf(b.type)):0));
     if(!list.length)w.append(h('div',{class:'ma-empty'},split&&ma.tab==='future'?'Nada programado para más adelante.':'Nada pendiente por aquí.'));
-    list.forEach(r=>{const d=r.due_date;const badge=r.status==='Not Approved'?h('span',{class:'ma-badge late'},'↻ Corregir'):!d?null:d<T?h('span',{class:'ma-badge late'},daysLate(d)+'d atrasado'):d===T?h('span',{class:'ma-badge f late'},'Hoy'):h('span',{class:'ma-badge f late'},'En '+(-daysLate(d))+'d');
+    list.forEach(r=>{const d=r.due_date;const badge=r.status==='Not Approved'?h('span',{class:'ma-badge late'},'↻ Corregir'):!d?null:d<T?h('span',{class:'ma-badge late'},daysLate(d)+'d atrasado'):d===T?h('span',{class:'ma-badge today'},'Hoy'):h('span',{class:'ma-badge f'},'En '+(-daysLate(d))+'d');
       const open=ma.open.has(r.id);const R=rawState(r);const q=R.q;
       w.append(h('div',{class:'ma-item'+(open?' open':''),style:'--c:'+(late(r)?'#e5484d':p.color)},
         h('button',{type:'button',class:'ma-tog','aria-expanded':String(open),'aria-controls':'mx-'+r.id,'aria-label':(open?'Ocultar':'Ver')+' detalles de '+(r.content_id||'esta tarea'),onclick:()=>{open?ma.open.delete(r.id):ma.open.add(r.id);rerender()}},h('span',{'aria-hidden':'true'},'›')),
