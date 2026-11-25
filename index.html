@@ -118,7 +118,7 @@ header .sp{flex:1}
 .pop.longpop{position:fixed;z-index:60;padding:0;max-width:none;max-height:none;overflow:hidden;display:flex;flex-direction:column}.pop.longpop textarea{min-width:0}
 .lp-head{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}.lp-tools{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line)}.lp-tools button{min-width:32px}
 .lp-link{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid var(--line)}.lp-link[hidden]{display:none}.lp-link input{flex:1;min-width:0}
-.cell.csel{background:color-mix(in srgb,var(--accent) 14%,transparent)!important}.cell.csel.ct{box-shadow:inset 0 2px 0 var(--accent)}.cell.csel.cb{box-shadow:inset 0 -2px 0 var(--accent)}.cell.csel.ct.cb{box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}.cell.csel.cl{border-left:2px solid var(--accent)}.cell.csel.cr{border-right:2px solid var(--accent)}
+.cell.csel,.lrow .t.csel{background:color-mix(in srgb,var(--accent) 14%,transparent)!important}.lrow .t.csel.ct{box-shadow:inset 0 2px 0 var(--accent)}.lrow .t.csel.cb{box-shadow:inset 0 -2px 0 var(--accent)}.lrow .t.csel.ct.cb{box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}.lrow .t.csel.cl{box-shadow:inset 2px 0 0 var(--accent)}.cell.csel.ct{box-shadow:inset 0 2px 0 var(--accent)}.cell.csel.cb{box-shadow:inset 0 -2px 0 var(--accent)}.cell.csel.ct.cb{box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}.cell.csel.cl{border-left:2px solid var(--accent)}.cell.csel.cr{border-right:2px solid var(--accent)}
 .lv .cell[data-k]{user-select:none}.acc-open{cursor:pointer}.acc-open:hover{text-decoration:underline}
 #accdr{position:fixed;top:0;right:0;bottom:0;width:min(1180px,62vw);z-index:35;background:var(--page);border-left:1px solid var(--border);box-shadow:-20px 0 50px #0005;display:flex;flex-direction:column}
 @media(max-width:900px){#accdr{width:100vw}}
@@ -1194,7 +1194,7 @@ function listView(cfg,key,root){
   const vis=data.slice(0,vs.limit).map(r=>r.id);const allOn=vis.length&&vis.every(id=>vs.sel.has(id));
   lv.append(h('div',{class:'lhead'},h('div',{class:'selc'},h('input',{type:'checkbox','aria-label':'Seleccionar todos',checked:!!allOn,onchange:e=>{vis.forEach(id=>e.target.checked?vs.sel.add(id):vs.sel.delete(id));rerender()}})),h('div',{title:pc.l},h('span',{class:'hl'},pc.l),rsz('_p',cfg.pw||260)),cfg.cols.map(c=>h('div',{title:c.ro?'Solo lectura':c.l},h('span',{class:'hl'},(c.ro?'🔒 ':'')+c.l),rsz(c.k,c.w||140)))));
   let shown=0;const sums=cfg.cols.filter(c=>c.sum);
-  const drawRow=r=>{if(shown>=vs.limit)return;shown++;const row=h('div',{class:'lrow'+(vs.sel.has(r.id)?' picked':'')+(st.editRow===r.id?' editing':''),'data-id':r.id,oncontextmenu:e=>{const cd=e.target.closest('.cell[data-k]');rowMenu(e,cfg,r,cd?cfg.cols.find(c=>c.k===cd.dataset.k):null,vs)}},h('div',{class:'cell selc'},h('input',{type:'checkbox','aria-label':'Seleccionar '+(r[cfg.primary]||''),checked:vs.sel.has(r.id),onchange:e=>{e.target.checked?vs.sel.add(r.id):vs.sel.delete(r.id);rerender()}})),h('div',{class:'t'},h('span',{class:'nm'},cfg.col==='accounts'?platIcon(r.platform):null,h('span',{class:cfg.col==='accounts'?'acc-open':null,onclick:cfg.col==='accounts'?(()=>openRec(r)):null},r[cfg.primary]||'(untitled)')),h('button',{type:'button','aria-label':'Expand record',onclick:()=>openRec(r)},'⤢')),
+  const drawRow=r=>{if(shown>=vs.limit)return;shown++;const row=h('div',{class:'lrow'+(vs.sel.has(r.id)?' picked':'')+(st.editRow===r.id?' editing':''),'data-id':r.id,oncontextmenu:e=>{const cd=e.target.closest('.cell[data-k]');rowMenu(e,cfg,r,cd?cfg.cols.find(c=>c.k===cd.dataset.k):null,vs)}},h('div',{class:'cell selc'},h('input',{type:'checkbox','aria-label':'Seleccionar '+(r[cfg.primary]||''),checked:vs.sel.has(r.id),onchange:e=>{e.target.checked?vs.sel.add(r.id):vs.sel.delete(r.id);rerender()}})),h('div',{class:'t','data-k':cfg.primary},h('span',{class:'nm'},cfg.col==='accounts'?platIcon(r.platform):null,h('span',{class:cfg.col==='accounts'?'acc-open':null,onclick:cfg.col==='accounts'?(()=>openRec(r)):null},r[cfg.primary]||'(untitled)')),h('button',{type:'button','aria-label':'Expand record',onclick:()=>openRec(r)},'⤢')),
       cfg.cols.map(c=>{const isCur=st.cur&&st.cur.key===key&&st.cur.id===r.id&&st.cur.k===c.k;const td=h('div',{class:'cell'+(c.ro?' ro':'')+(isCur?' cur':''),'data-k':c.k,'data-e':c.ro?null:'1',title:c.ro?null:'Doble clic (o Enter) para editar',onclick:()=>{document.querySelectorAll('.cell.cur').forEach(x=>x.classList.remove('cur'));td.classList.add('cur');st.cur={key,id:r.id,k:c.k}},ondblclick:e=>{if(e.target.tagName==='A'||e.target.tagName==='INPUT')return;editCell(td,c,r,cfg)}},h('span',{class:'lbl'},c.l),h('span',null,cellView(c,r)));return td}));lv.append(row)};
   const order=k=>{const o=ord(k);return o||(()=>0)};
   const walk=(list,depth,path)=>{if(depth>=vs.group.length){list.forEach(drawRow);return}
@@ -1829,22 +1829,33 @@ function noteDlg(a,d0){const d=h('input',{type:'date',value:d0,id:'nt_d'}),t=h('
   openModal(h('form',{class:'dlg',style:'width:min(440px,100%)',onsubmit:e=>{e.preventDefault();if(!t.value.trim())return;patch('accounts',a.id,{chart_notes:[...arr(a.chart_notes),{date:d.value,text:t.value.trim()}]});closeModal();renderAccDrawer()}},h('h2',null,'Nota en el gráfico',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),h('div',{class:'f'},h('label',{for:'nt_d'},'Día'),d),h('div',{class:'f'},h('label',{for:'nt_t'},'Nota'),t),h('div',{class:'acts'},h('button',{type:'button',onclick:closeModal},'Cancelar'),h('button',{type:'submit',class:'btn-acc'},'Añadir'))))}
 
 /* ---------- copiar y pegar celdas (como Airtable/Excel) ---------- */
-const GRID={};let GS=null,gDrag=false,gUndo=[];
+const GRID={};let GS=null,gDrag=false,gUndo=[];const gq=k=>':is(.cell,.t)[data-k="'+CSS.escape(k)+'"]';
 const gLv=key=>document.querySelector('.lv[data-key="'+CSS.escape(key)+'"]');
 const gRows=lv=>[...lv.querySelectorAll('.lrow[data-id]')];
-const gCols=lv=>{const r=lv.querySelector('.lrow[data-id]');return r?[...r.querySelectorAll('.cell[data-k]')].map(c=>c.dataset.k):[]};
+const gCols=lv=>{const r=lv.querySelector('.lrow[data-id]');return r?[...r.querySelectorAll(':is(.cell,.t)[data-k]')].map(c=>c.dataset.k):[]};
 function gRect(){if(!GS)return null;const lv=gLv(GS.key);if(!lv)return null;const R=gRows(lv).map(r=>r.dataset.id),K=gCols(lv);
   const r1=R.indexOf(GS.a.id),r2=R.indexOf(GS.b.id),c1=K.indexOf(GS.a.k),c2=K.indexOf(GS.b.k);if(r1<0||r2<0||c1<0||c2<0)return null;
   return {lv,ids:R.slice(Math.min(r1,r2),Math.max(r1,r2)+1),ks:K.slice(Math.min(c1,c2),Math.max(c1,c2)+1)}}
-function paintSel(){document.querySelectorAll('.cell.csel').forEach(x=>x.classList.remove('csel','ct','cb','cl','cr'));const R=gRect();if(!R)return;if(R.ids.length*R.ks.length<2)return;
-  R.ids.forEach((id,i)=>{const row=R.lv.querySelector('.lrow[data-id="'+CSS.escape(id)+'"]');if(!row)return;R.ks.forEach((k,j)=>{const c=row.querySelector('.cell[data-k="'+CSS.escape(k)+'"]');if(!c)return;c.classList.add('csel');if(!i)c.classList.add('ct');if(i===R.ids.length-1)c.classList.add('cb');if(!j)c.classList.add('cl');if(j===R.ks.length-1)c.classList.add('cr')})})}
-const gCell=el=>{const c=el&&el.closest&&el.closest('.cell[data-k]');if(!c)return null;const row=c.closest('.lrow[data-id]'),lv=c.closest('.lv[data-key]');return row&&lv?{c,id:row.dataset.id,k:c.dataset.k,key:lv.dataset.key}:null};
-function gSetCur(x){document.querySelectorAll('.cell.cur').forEach(e=>e.classList.remove('cur'));x.c.classList.add('cur');st.cur={key:x.key,id:x.id,k:x.k}}
+/* selección suelta con Cmd/Ctrl+clic: GS.picks = Set de "id\tk" (se suma a la selección; Shift+clic añade el rango) */
+const pk=(id,k)=>id+'\t'+k;
+function gCells(){if(!GS)return [];const lv=gLv(GS.key);if(!lv)return [];const R=gRows(lv).map(r=>r.dataset.id),K=gCols(lv);
+  if(GS.picks){const out=[];R.forEach(id=>K.forEach(k=>{if(GS.picks.has(pk(id,k)))out.push({id,k})}));return out}
+  const X=gRect();return X?X.ids.flatMap(id=>X.ks.map(k=>({id,k}))):[]}
+function rectCells(a,b){const lv=gLv(GS.key);if(!lv)return [];const R=gRows(lv).map(r=>r.dataset.id),K=gCols(lv);const r1=R.indexOf(a.id),r2=R.indexOf(b.id),c1=K.indexOf(a.k),c2=K.indexOf(b.k);if(r1<0||r2<0||c1<0||c2<0)return [];
+  const out=[];for(let i=Math.min(r1,r2);i<=Math.max(r1,r2);i++)for(let j=Math.min(c1,c2);j<=Math.max(c1,c2);j++)out.push(pk(R[i],K[j]));return out}
+function paintSel(){document.querySelectorAll('.csel').forEach(x=>x.classList.remove('csel','ct','cb','cl','cr'));
+  if(GS&&GS.picks){const lv=gLv(GS.key);if(!lv)return;GS.picks.forEach(p=>{const [id,k]=p.split('\t');const row=lv.querySelector('.lrow[data-id="'+CSS.escape(id)+'"]');const c=row&&row.querySelector(gq(k));if(c)c.classList.add('csel','ct','cb','cl','cr')});return}
+  const R=gRect();if(!R)return;if(R.ids.length*R.ks.length<2)return;
+  R.ids.forEach((id,i)=>{const row=R.lv.querySelector('.lrow[data-id="'+CSS.escape(id)+'"]');if(!row)return;R.ks.forEach((k,j)=>{const c=row.querySelector(gq(k));if(!c)return;c.classList.add('csel');if(!i)c.classList.add('ct');if(i===R.ids.length-1)c.classList.add('cb');if(!j)c.classList.add('cl');if(j===R.ks.length-1)c.classList.add('cr')})})}
+const gCell=el=>{const c=el&&el.closest&&el.closest(':is(.cell,.t)[data-k]');if(!c)return null;const row=c.closest('.lrow[data-id]'),lv=c.closest('.lv[data-key]');return row&&lv?{c,id:row.dataset.id,k:c.dataset.k,key:lv.dataset.key}:null};
+function gSetCur(x){document.querySelectorAll('.cur').forEach(e=>e.classList.remove('cur'));x.c.classList.add('cur');st.cur={key:x.key,id:x.id,k:x.k}}
 document.addEventListener('mousedown',e=>{if(e.button!==0)return;const x=gCell(e.target);if(!x){if(!e.target.closest('.pop,#modal,.lbox,#accdr,.toolbar'))GS=null,paintSel();return}
   if(e.target.closest('input,button,a,select,textarea,.selc'))return;
-  if(e.shiftKey&&GS&&GS.key===x.key){GS.b={id:x.id,k:x.k};e.preventDefault();paintSel();return}
+  if((e.metaKey||e.ctrlKey)&&!e.shiftKey){e.preventDefault();if(!GS||GS.key!==x.key)GS={key:x.key,a:{id:x.id,k:x.k},b:{id:x.id,k:x.k},picks:new Set()};
+    else if(!GS.picks)GS.picks=new Set(rectCells(GS.a,GS.b));const p=pk(x.id,x.k);GS.picks.has(p)?GS.picks.delete(p):GS.picks.add(p);GS.a={id:x.id,k:x.k};GS.b={...GS.a};window.getSelection&&window.getSelection().removeAllRanges();paintSel();return}
+  if(e.shiftKey&&GS&&GS.key===x.key){e.preventDefault();window.getSelection&&window.getSelection().removeAllRanges();if(GS.picks){rectCells(GS.a,{id:x.id,k:x.k}).forEach(p=>GS.picks.add(p))}else GS.b={id:x.id,k:x.k};paintSel();return}
   GS={key:x.key,a:{id:x.id,k:x.k},b:{id:x.id,k:x.k}};gDrag=true;paintSel()},true);
-document.addEventListener('mouseover',e=>{if(!gDrag||!GS)return;const x=gCell(e.target);if(!x||x.key!==GS.key)return;if(GS.b.id===x.id&&GS.b.k===x.k)return;GS.b={id:x.id,k:x.k};window.getSelection&&window.getSelection().removeAllRanges();paintSel()});
+document.addEventListener('mouseover',e=>{if(!gDrag||!GS||GS.picks)return;const x=gCell(e.target);if(!x||x.key!==GS.key)return;if(GS.b.id===x.id&&GS.b.k===x.k)return;GS.b={id:x.id,k:x.k};window.getSelection&&window.getSelection().removeAllRanges();paintSel()});
 document.addEventListener('mouseup',()=>{gDrag=false});
 const gTyping=()=>{const a=document.activeElement;return a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable)};
 const gBusy=()=>gTyping()||popEl||longEl||$('#modal').classList.contains('on')||(typeof lbox!=='undefined'&&lbox)||(typeof filesEl!=='undefined'&&filesEl);
@@ -1869,11 +1880,15 @@ function gApply(key,cells){const g=GRID[key];if(!g||!cells.length)return 0;const
   byRow.forEach((p,id)=>{const cur=S.d[g.col].get(id);if(!cur)return;const prev={};Object.keys(p).forEach(k=>prev[k]=cur[k]);undo.push({c:g.col,id,prev});put(g.col,id,{...cur,...p},true)});
   if(undo.length){gUndo.push(undo);if(gUndo.length>30)gUndo.shift();rerender();setTimeout(paintSel,0)}
   const n=[...byRow.values()].reduce((x,p)=>x+Object.keys(p).length,0);toast(n+' celda'+(n===1?'':'s')+' actualizada'+(n===1?'':'s')+(skip?' · '+skip+' sin cambiar (bloqueada o valor no válido)':'')+' · Ctrl+Z para deshacer');return n}
-document.addEventListener('copy',e=>{if(gTyping()||!GS)return;const sel=window.getSelection&&String(window.getSelection());if(sel&&sel.trim()&&!document.querySelector('.cell.csel'))return;const R=gRect();if(!R)return;
+document.addEventListener('copy',e=>{if(gTyping()||!GS)return;const sel=window.getSelection&&String(window.getSelection());if(sel&&sel.trim()&&!document.querySelector('.csel'))return;
+  if(GS.picks){const cs=gCells();if(!cs.length)return;const rowsM=new Map();cs.forEach(c=>{if(!rowsM.has(c.id))rowsM.set(c.id,[]);rowsM.get(c.id).push(gRaw(GS.key,c.id,c.k))});const raw=[...rowsM.values()];
+    const tsv=raw.map(r=>r.map(v=>gTsvCell(gText(v))).join('\t')).join('\n');e.clipboardData.setData('text/plain',tsv);e.preventDefault();GS.clip={tsv,raw};window.__gclip=GS.clip;toast(cs.length===1?'Celda copiada':cs.length+' celdas copiadas');return}
+  const R=gRect();if(!R)return;
   const raw=R.ids.map(id=>R.ks.map(k=>gRaw(GS.key,id,k)));const tsv=raw.map(r=>r.map(v=>gTsvCell(gText(v))).join('\t')).join('\n');
   e.clipboardData.setData('text/plain',tsv);e.preventDefault();GS.clip={tsv,raw,ks:R.ks};window.__gclip=GS.clip;const n=R.ids.length*R.ks.length;toast(n===1?'Celda copiada':n+' celdas copiadas')});
 document.addEventListener('paste',e=>{if(gTyping()||!GS||gBusy())return;const R=gRect();if(!R)return;const text=e.clipboardData.getData('text/plain');const clip=window.__gclip;const raw=clip&&clip.tsv===text;
-  const grid=raw?clip.raw:gParse(text);if(!grid.length||!grid[0].length)return;e.preventDefault();const lv=R.lv;const allIds=gRows(lv).map(r=>r.dataset.id),allK=gCols(lv);const cells=[];
+  const grid=raw?clip.raw:gParse(text);if(!grid.length||!grid[0].length)return;e.preventDefault();
+  if(GS.picks&&GS.picks.size>1&&grid.length===1&&grid[0].length===1){gApply(GS.key,gCells().map(c=>({...c,v:grid[0][0],raw})));return}const lv=R.lv;const allIds=gRows(lv).map(r=>r.dataset.id),allK=gCols(lv);const cells=[];
   const gh=grid.length,gw=Math.max(...grid.map(r=>r.length));
   if(R.ids.length*R.ks.length>1&&!(R.ids.length<gh&&R.ks.length<gw)){R.ids.forEach((id,i)=>R.ks.forEach((k,j)=>{const v=(grid[i%gh]||[])[j%gw];cells.push({id,k,v,raw})}))}
   else{const r0=allIds.indexOf(R.ids[0]),c0=allK.indexOf(R.ks[0]);for(let i=0;i<gh;i++)for(let j=0;j<gw;j++){const id=allIds[r0+i],k=allK[c0+j];if(id&&k)cells.push({id,k,v:(grid[i]||[])[j],raw})}
@@ -1882,11 +1897,11 @@ document.addEventListener('paste',e=>{if(gTyping()||!GS||gBusy())return;const R=
 document.addEventListener('keydown',e=>{if(gBusy())return;const mod=e.metaKey||e.ctrlKey;
   if(mod&&!e.shiftKey&&e.key.toLowerCase()==='z'&&gUndo.length){e.preventDefault();const u=gUndo.pop();u.forEach(({c,id,prev})=>{const cur=S.d[c].get(id);if(cur)put(c,id,{...cur,...prev},true,true)});rerender();setTimeout(paintSel,0);toast('Deshecho');return}
   if(!GS)return;
-  if((e.key==='Delete'||e.key==='Backspace')&&!mod){const R=gRect();if(!R)return;e.preventDefault();const cells=[];R.ids.forEach(id=>R.ks.forEach(k=>cells.push({id,k,v:''})));gApply(GS.key,cells);return}
-  if(e.key==='Escape'&&document.querySelector('.cell.csel')){GS.b={...GS.a};paintSel();return}
+  if((e.key==='Delete'||e.key==='Backspace')&&!mod){const cs=gCells();if(!cs.length)return;e.preventDefault();gApply(GS.key,cs.map(c=>({...c,v:''})));return}
+  if(e.key==='Escape'&&document.querySelector('.csel')){GS.picks=null;GS.b={...GS.a};paintSel();return}
   const mv={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];if(!mv||mod)return;const lv=gLv(GS.key);if(!lv)return;const R=gRows(lv).map(r=>r.dataset.id),K=gCols(lv);
   const from=e.shiftKey?GS.b:GS.a;let r=R.indexOf(from.id)+mv[0],c=K.indexOf(from.k)+mv[1];if(r<0||c<0||r>=R.length||c>=K.length)return;e.preventDefault();const t={id:R[r],k:K[c]};
-  if(e.shiftKey)GS.b=t;else{GS.a=t;GS.b={...t}}const row=lv.querySelector('.lrow[data-id="'+CSS.escape(t.id)+'"]');const cell=row&&row.querySelector('.cell[data-k="'+CSS.escape(t.k)+'"]');if(cell){if(!e.shiftKey)gSetCur({c:cell,...t,key:GS.key});cell.scrollIntoView({block:'nearest',inline:'nearest'})}paintSel()});
+  GS.picks=null;if(e.shiftKey)GS.b=t;else{GS.a=t;GS.b={...t}}const row=lv.querySelector('.lrow[data-id="'+CSS.escape(t.id)+'"]');const cell=row&&row.querySelector(gq(t.k));if(cell){if(!e.shiftKey)gSetCur({c:cell,...t,key:GS.key});cell.scrollIntoView({block:'nearest',inline:'nearest'})}paintSel()});
 
 /* ---------- posting por plataforma (secciones como Kalista) ---------- */
 const pf={};
