@@ -1310,7 +1310,8 @@ function bulkEdit(cfg,vs){const ids=[...vs.sel];const cols=cfg.allCols.filter(c=
 const BAD_ACC=['Paused & Inactive','Suspended for Appeal','Suspended Selfie Loop','Disabled','Pending','Login Issue','Verification Pending (NO USE)'];
 /* variaciones con una tarea de posting en Scheduled: ya están programadas, no cuentan como contenido aprobado disponible */
 function schedVars(){const s=new Set();rows('actions').forEach(t=>{if(t.variation_ref&&t.status==='Scheduled'&&POST_TYPES.includes(t.action_type))s.add(t.variation_ref)});return s}
-const isAvail=(v,SCH)=>v.vstatus==='Approved'&&!SCH.has(v.id);
+/* disponible = Approved, sin programar y con vídeo propio para su cuenta (la misma regla que usa el selector de variaciones) */
+const isAvail=(v,SCH)=>v.vstatus==='Approved'&&!SCH.has(v.id)&&!varDupWarn(v);
 function approvedByAcc(kind){const out=new Map();const SCH=schedVars();rows('variations').forEach(v=>{if(!isAvail(v,SCH))return;const c=v.content_ref&&S.d.content.get(v.content_ref);if(c&&!LIVE_ST.includes(c.status))return;
     const ok=kind==='stories'?v.type==='Stories':v.type!=='Stories'&&(kind==='trial'?!!v.trial_reels:(!v.trial_reels&&(v.trial_set||!(c&&c.trial_reels))));if(!ok)return;
     const ids=v.account_id?[v.account_id]:arr(v.accounts).map(l=>{const f=accFind(l);return f&&f.id}).filter(Boolean);ids.forEach(id=>out.set(id,(out.get(id)||0)+1))});return out}
