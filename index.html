@@ -1446,7 +1446,7 @@ function ipNotDone(t,anchor){pop(anchor,[h('div',{class:'muted',style:'padding:6
 function igPostView(root){const all=ipTasks();const dl=ipDl();const T=today();
   const byA=new Map();all.forEach(t=>{const a=taskAccount(t);if(!byA.has(a.id))byA.set(a.id,{a,ts:[]});byA.get(a.id).ts.push(t)});
   const groups=[...byA.values()].sort((x,y)=>String(x.a.phone||'~').localeCompare(String(y.a.phone||'~'),'es',{numeric:true})||String(x.a.name).localeCompare(String(y.a.name)));
-  const plan=[];groups.forEach((g,gi)=>{g.c=IPCOL[gi%IPCOL.length];g.ts.sort((x,y)=>(ipClosed(x)-ipClosed(y))||String(x.due||'').localeCompare(String(y.due||''))||(!!x.trial_reels-!!y.trial_reels)||String(x.name||'').localeCompare(String(y.name||''),'es',{numeric:true}));g.ts.forEach((t,i)=>plan.push({t,a:g.a,n:i+1,name:ipName(t,g.a,i+1)}))});
+  const plan=[];groups.forEach((g,gi)=>{g.c=IPCOL[gi%IPCOL.length];/* primero todos los reels y después todos los trials; dentro de cada tipo por fecha y lo ya publicado antes que lo pendiente. Numeración separada: REEL 1º, 2º… y TRIAL 1º, 2º… */g.ts.sort((x,y)=>(!!x.trial_reels-!!y.trial_reels)||String(x.due||'').localeCompare(String(y.due||''))||(ipClosed(y)-ipClosed(x))||String(x.name||'').localeCompare(String(y.name||''),'es',{numeric:true}));const nn={r:0,t:0};g.ts.forEach(t=>{const n=t.trial_reels?++nn.t:++nn.r;plan.push({t,a:g.a,n,name:ipName(t,g.a,n)})})});
   [...ip.sel].forEach(id=>{if(!plan.some(x=>x.t.id===id&&!ipClosed(x.t)))ip.sel.delete(id)});
   const cnt=k=>{const o=ip.kind;ip.kind=k;const n=ipTasks().filter(t=>!ipClosed(t)).length;ip.kind=o;return n};
   root.append(h('div',{class:'rv-bar'},h('strong',null,'Posteo IG · manual'),
