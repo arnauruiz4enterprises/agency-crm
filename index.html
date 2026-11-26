@@ -1383,7 +1383,7 @@ function reviewView(root){rvStop();const L=rvList();const all=mine('content').fi
       files.length>1?h('div',{class:'rv-nav'},h('button',{type:'button','aria-label':'Vídeo anterior',onclick:e=>{e.stopPropagation();rv.idx[r.id]=(k-1+files.length)%files.length;rerender()}},'‹'),(k+1)+' / '+files.length,h('button',{type:'button','aria-label':'Vídeo siguiente',onclick:e=>{e.stopPropagation();rv.idx[r.id]=(k+1)%files.length;rerender()}},'›')):null);
     const num=(String(r.content_id||'').match(/(\d+)\s*$/)||[])[1]||r.content_id;
     const card=h('div',{class:'rv-card'+(sel?' sel':'')+(rv.focus===r.id?' foc':'')+(nd.ok?'':' warn'),'data-id':r.id,tabindex:'-1'},media,
-      h('div',{class:'rv-info'},h('span',{class:'id',title:r.content_id},num+(r.vertical?' · '+r.vertical:'')),h('span',{class:'meta'},[r.type,Object.entries(byP).map(([p,n])=>n+' '+p).join(' · ')||'sin cuentas',r.due_date?'due '+fmtD(r.due_date):null].filter(Boolean).join(' · '))),
+      h('div',{class:'rv-info'},h('span',{class:'id',title:r.content_id},num+(r.vertical?' · '+r.vertical:'')),h('span',{class:'meta'},[r.type,Object.entries(byP).map(([p,n])=>n+' '+p).join(' · ')||'sin cuentas',r.due_date?'due '+String(r.due_date).slice(8,10)+'/'+String(r.due_date).slice(5,7):null].filter(Boolean).join(' · '))),
       h('div',{class:'rv-acts'},h('button',{type:'button',class:'rv-no',onclick:()=>rvReject([r.id])},'✕'),h('button',{type:'button',class:'rv-ok',onclick:()=>rvApprove([r.id])},'✓ Aprobar')),
       r.instructions?h('details',{class:'rv-ins'},h('summary',null,'Instrucciones'),richNode(r.instructions)):null);
     grid.append(card)});
