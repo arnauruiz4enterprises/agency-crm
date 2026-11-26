@@ -789,6 +789,8 @@ function contentAutoStatus(ref,cname){const c=(ref&&S.d.content.get(ref))||(cnam
 let inHook=false;
 function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHook=true;try{
   if(c==='variations'&&(!prev||prev.vstatus!==row.vstatus))contentAutoStatus(row.content_ref,row.content_id);
+    /* si en Pipeline se marca/desmarca Trial Reels en una variación ya asignada, su tarea de posting abierta cambia de tipo con ella (Reel ⇄ Trial) */
+    if(c==='variations'&&prev&&!!prev.trial_reels!==!!row.trial_reels)rows('actions').forEach(t=>{if(t.variation_ref!==row.id||!POST_TYPES.includes(t.action_type)||['Done','Posted','Not Done','Cancelled'].includes(t.status)||!!t.trial_reels===!!row.trial_reels)return;const K=KIND[row.trial_reels?'TR':'NR'];put('actions',t.id,{...t,trial_reels:!!row.trial_reels,name:String(t.name||'').replace(/^(Normal Reel|Trial Reel)/,K[0])},true)});
   if(c==='content'){ensureVars(row);if(retractVars(row))rerender();if(LIVE_ST.includes(row.status))persistVarFiles(row);if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
   if(c==='actions'){const a=row.account_id?S.d.accounts.get(row.account_id):accFind(arr(row.account)[0]);
     if(POST_TYPES.includes(row.action_type)&&row.variation_ref&&S.d.variations.has(row.variation_ref)){const v=S.d.variations.get(row.variation_ref);
