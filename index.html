@@ -1434,7 +1434,7 @@ function igPostView(root){const all=ipTasks();const dl=ipDl();const T=today();
     h('button',{type:'button',onclick:()=>{const p=plan.filter(x=>!isDone(x.t)&&ipFile(x.t));const allSel=p.length&&p.every(x=>ip.sel.has(x.t.id));p.forEach(x=>allSel?ip.sel.delete(x.t.id):ip.sel.add(x.t.id));rerender()}},'Seleccionar todo'),
     h('button',{type:'button',class:'rv-ok',onclick:()=>{if(!ip.sel.size){toast('Marca primero las tareas a descargar');return}ipDownload(plan.filter(x=>ip.sel.has(x.t.id)))}},'⬇ Descargar seleccionadas')));
   if(!groups.length){root.append(h('div',{class:'empty'},'No hay tareas manuales de Instagram pendientes hasta hoy'+(model()?' para esta modelo':'')+'.'));return}
-  groups.forEach(g=>{const a=g.a;const user=accUser(a)||a.name;const pend=plan.filter(x=>x.a.id===a.id&&!isDone(x.t));const done=g.ts.filter(isDone).length;
+  groups.forEach(g=>{const a=g.a;const user=accUser(a)||a.name;const pend=plan.filter(x=>x.a.id===a.id&&!isDone(x.t)&&ipFile(x.t));const done=g.ts.filter(isDone).length;
     const head=h('div',{class:'ip-head'},a.pfp?h('img',{class:'ip-pfp',src:a.pfp,alt:''}):h('span',{class:'ip-pfp'},String(user).slice(0,2).toUpperCase()),
       h('div',{style:'flex:1;min-width:0'},h('div',{class:'ip-user'},'@'+user),h('div',{class:'ip-sub'},[a.branding,a.phone?'📱 '+a.phone:null,g.ts.length+' tarea'+(g.ts.length===1?'':'s')+' · '+done+' publicada'+(done===1?'':'s')].filter(Boolean).join(' · '))),
       pend.length?h('button',{type:'button',onclick:()=>ipDownload(pend)},'⬇ Descargar '+(pend.length===1?'la pendiente':'las '+pend.length)):null);
