@@ -886,7 +886,8 @@ async function flushSign(){const ps=[...signQ].filter(p=>{const c=SIGNED.get(p);
   setTimeout(()=>FED_LIVE.forEach(f=>{try{f()}catch(e){}}),0)}
 function fileThumb(a,big,L,passive){const u=a.url||signedUrl(a.path);const vid=isVideo(a);const cls='fthumb'+(big?' big':'');const label=(vid?'Vídeo: ':'Imagen: ')+(a.name||'archivo');
   const inner=!u?h('span',{class:'fph','aria-hidden':'true'},vid?'🎞':'🖼'):vid?[vthNode(a.path||a.url,u),h('span',{class:'fplay','aria-hidden':'true'},'▶')]:h('img',{src:u,alt:'',loading:'lazy'});
-  if(passive)return h('span',{class:cls,title:(a.name||'')+' · doble clic para abrir'},inner);
+  /* en las tablas: un clic en la miniatura abre el vídeo directamente; doble clic en el resto de la celda sigue abriendo la edición de archivos */
+  if(passive)return h('span',{class:cls,style:'cursor:pointer',title:(a.name||'')+' · clic para ver',onclick:e=>{e.stopPropagation();const LL=(L&&L.length?L:[a]);viewFiles(LL,Math.max(0,LL.indexOf(a)))},ondblclick:e=>e.stopPropagation()},inner);
   return h('a',{class:cls,href:'#',role:'button',title:a.name||'','aria-label':'Ver '+label,onclick:e=>{e.preventDefault();e.stopPropagation();const LL=(L&&L.length?L:[a]);viewFiles(LL,Math.max(0,LL.indexOf(a)))},ondblclick:e=>e.stopPropagation()},inner)}
 /* visor dentro del CRM: nunca abre pestañas nuevas */
 async function fileSrc(a){if(a.url&&!a.path)return a.url;const c=SIGNED.get(a.path);if(c&&c.url&&c.exp>Date.now())return c.url;if(!S.sb)return null;const {data}=await S.sb.storage.from(FILE_BUCKET).createSignedUrl(a.path,3600);if(data&&data.signedUrl){SIGNED.set(a.path,{url:data.signedUrl,exp:Date.now()+55*60e3});return data.signedUrl}return null}
