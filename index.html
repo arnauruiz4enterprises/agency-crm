@@ -578,7 +578,7 @@ const COLS=['models','accounts','content','steps','concepts','branding','project
 const S={d:{},db:null,mode:'loading',q:{}};
 COLS.forEach(c=>S.d[c]=new Map());
 const rows=c=>[...S.d[c].values()];
-let VA_CACHE=new Map();let rT=null;const rerender=()=>{VA_CACHE=new Map();clearTimeout(rT);rT=setTimeout(render,40)};
+let VA_CACHE=new Map();let PSET=null;let rT=null;const rerender=()=>{VA_CACHE=new Map();PSET=null;clearTimeout(rT);rT=setTimeout(render,40)};
 const soft=()=>{clearTimeout(rT);rT=setTimeout(()=>{st.keepPop=true;try{render()}finally{st.keepPop=false}},30)};
 function saveLocal(c){if(S.mode==='local')ls.set('crm:'+c,rows(c))}
 function clean(o){const r={};for(const k in o){if(k==='id'||o[k]===undefined)continue;r[k]=o[k]}return r}
@@ -603,7 +603,7 @@ function ruleErr(c,row,prev){
   if(c==='actions'&&POST_TYPES.includes(row.action_type)&&isDone(row)&&!String(row.post_link||'').trim()&&(!prev||!isDone(prev)||String(prev.post_link||'').trim()))return 'No se puede marcar como hecha sin el link del post publicado (Post Link).';
   return null}
 function put(c,id,data,quiet,force){if(!force&&!inHook&&S.role!=='model'&&S.loaded){const prv=S.d[c]&&S.d[c].get(id);const e=prv&&ruleErr(c,{...data,id},prv);if(e){toast(e,6000);rerender();const p=Promise.resolve(false);p.blocked=true;return p}}
-  VA_CACHE=new Map();const row={...data,id};const prev0=S.d[c].get(id);if(c==='content'&&S.role!=='model'&&S.loaded){const q=calcReq(row);row.reps_needed=q.reps;row.files_needed=q.files;if(!quiet&&row.status==='Not Approved'&&(!prev0||prev0.status!=='Not Approved')&&!String(row.reject_reason||'').trim())setTimeout(()=>toast('Not Approved vuelve al editor. Escribe el “Motivo de rechazo” para que sepa qué rehacer en la edición.'),300)}const prev=S.d[c].get(id);S.d[c].set(id,row);try{afterPut(c,row,prev)}catch(e){}if(!quiet)rerender();
+  VA_CACHE=new Map();PSET=null;const row={...data,id};const prev0=S.d[c].get(id);if(c==='content'&&S.role!=='model'&&S.loaded){const q=calcReq(row);row.reps_needed=q.reps;row.files_needed=q.files;if(!quiet&&row.status==='Not Approved'&&(!prev0||prev0.status!=='Not Approved')&&!String(row.reject_reason||'').trim())setTimeout(()=>toast('Not Approved vuelve al editor. Escribe el “Motivo de rechazo” para que sepa qué rehacer en la edición.'),300)}const prev=S.d[c].get(id);S.d[c].set(id,row);try{afterPut(c,row,prev)}catch(e){}if(!quiet)rerender();
   if(S.mode==='sb')return sbPut(c,row);
   if(S.mode==='db'){const p=c+'/'+id;S.q[p]=(S.q[p]||Promise.resolve()).then(()=>S.db.collection(c).doc(id).set(clean(row))).catch(e=>{toast('Could not save: '+((e&&e.code)||'error')+'. Check your access to this page.')});return S.q[p]}
   saveLocal(c);return Promise.resolve()}
@@ -795,7 +795,7 @@ function backfillTrialInstr(){let n=0;rows('content').forEach(r=>{if(!r.trial_re
   const next=src.instructions&&!cur.includes(String(src.instructions).slice(0,60))?trialInstr(cur.replace(/^\*\*TRIAL REEL\*\*\n/,''),src):r.instructions;put('content',r.id,{...r,instructions:next,src_instr:true},true);n++});return n}
 /* una sola vez: las variaciones antiguas marcadas como Seen se dan por hechas en Trial Reels (punto de partida) */
 function migTrialMade(){if(S.role==='model'||(settings().mig||{}).trial_made_v1)return 0;let n=0;rows('variations').forEach(v=>{if(v.seen==='Seen'&&!v.trial_made){put('variations',v.id,{...v,trial_made:'Trial Done'},true);n++}});const st0=settings();put('settings','main',{...st0,mig:{...(st0.mig||{}),trial_made_v1:today()}},true);if(n)setTimeout(()=>toast(n+' variaciones vistas marcadas como «Trial Done»'),500);return n}
-function syncAllVars(){let n=0;if(S.role!=='model'){n+=backfillTrialInstr();n+=migTrialMade()}rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});VA_CACHE=new Map();rows('content').forEach(r=>{if(LIVE_ST.includes(r.status)&&anyFiles(r).length>1)n+=persistVarFiles(r)});if(n)rerender()}
+function syncAllVars(){let n=0;if(S.role!=='model'){n+=backfillTrialInstr();n+=migTrialMade()}rows('content').forEach(r=>{n+=retractVars(r)});const idx=new Map();rows('variations').forEach(v=>{if(!v.content_id||!v.account_id)return;if(!idx.has(v.content_id))idx.set(v.content_id,new Set());idx.get(v.content_id).add(v.account_id)});rows('content').forEach(r=>{n+=ensureVars(r,idx)});VA_CACHE=new Map();PSET=null;rows('content').forEach(r=>{if(LIVE_ST.includes(r.status)&&anyFiles(r).length>1)n+=persistVarFiles(r)});if(n)rerender()}
 /* estado del contenido según sus variaciones: alguna publicada y otras pendientes → Semi-Posted; todas publicadas → Posted */
 const V_GONE=['Posted','Archived','Not Done','Removed'];
 function contentAutoStatus(ref,cname){const c=(ref&&S.d.content.get(ref))||(cname&&rows('content').find(x=>x.content_id===cname));if(!c||!LIVE_ST.includes(c.status))return;
@@ -1339,7 +1339,9 @@ const BAD_ACC=['Paused & Inactive','Suspended for Appeal','Suspended Selfie Loop
 /* variaciones con una tarea de posting en Scheduled: ya están programadas, no cuentan como contenido aprobado disponible */
 function schedVars(){const s=new Set();rows('actions').forEach(t=>{if(t.variation_ref&&t.status==='Scheduled'&&POST_TYPES.includes(t.action_type))s.add(t.variation_ref)});return s}
 /* disponible = Approved, sin programar y con vídeo propio para su cuenta (la misma regla que usa el selector de variaciones) */
-const isAvail=(v,SCH)=>v.vstatus==='Approved'&&!SCH.has(v.id)&&!varDupWarn(v);
+/* ese mismo contenido ya está publicado en esa misma cuenta (otra variación Posted con la misma cuenta) */
+const postedSame=v=>{if(!PSET){PSET=new Set();rows('variations').forEach(x=>{if(x.vstatus==='Posted'&&x.account_id)PSET.add((x.content_ref||x.content_id)+'|'+x.account_id)})}return !!v.account_id&&PSET.has((v.content_ref||v.content_id)+'|'+v.account_id)};
+const isAvail=(v,SCH)=>v.vstatus==='Approved'&&!SCH.has(v.id)&&!varDupWarn(v)&&!postedSame(v);
 function approvedByAcc(kind){const out=new Map();const SCH=schedVars();rows('variations').forEach(v=>{if(!isAvail(v,SCH))return;const c=v.content_ref&&S.d.content.get(v.content_ref);if(c&&!LIVE_ST.includes(c.status))return;
     const ok=kind==='stories'?v.type==='Stories':v.type!=='Stories'&&(kind==='trial'?!!v.trial_reels:(!v.trial_reels&&(v.trial_set||!(c&&c.trial_reels))));if(!ok)return;
     const ids=v.account_id?[v.account_id]:arr(v.accounts).map(l=>{const f=accFind(l);return f&&f.id}).filter(Boolean);ids.forEach(id=>out.set(id,(out.get(id)||0)+1))});return out}
@@ -1575,7 +1577,7 @@ function pipelineView(tab,root){const kind=tab.trial===true?'trial':(tab.types||
       showCar?h('div',{class:'cell ro'+(car>0?' warn':' bad')},h('span',{class:'lbl'},'Carousels'),h('span',null,fmt(car))):null,
       h('div',{class:'cell ro'+dtone},h('span',{class:'lbl'},'Days'),h('span',null,fmt(days))),
       h('div',{class:'cell'},h('span',{class:'lbl'},'Account Link'),h('span',null,a.link?h('a',{href:a.link,target:'_blank',rel:'noopener'},a.link.replace(/^https?:\/\/(www\.)?/,'')):'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Status'),h('span',null,chip(a.status,'account_status')||'—')),h('div',{class:'cell'},h('span',{class:'lbl'},'Health'),h('span',null,chip(a.health,'health')||'—'))));
-    if(open){const list=mv.filter(vf).sort((x,y)=>String(y.posted||'').localeCompare(String(x.posted||''))||String(x.name||'').localeCompare(String(y.name||''),undefined,{numeric:true}));
+    if(open){/* fuera las Approved que no se pueden publicar en esta cuenta (sin vídeo propio o ya publicadas aquí); se quedan las disponibles, las programadas y el resto de estados */const list=mv.filter(vf).filter(v=>!(v.vstatus==='Approved'&&!SCH.has(v.id)&&!isAvail(v,SCH))).sort((x,y)=>String(y.posted||'').localeCompare(String(x.posted||''))||String(x.name||'').localeCompare(String(y.name||''),undefined,{numeric:true}));
       lv.append(h('div',{style:'padding:6px 10px 14px 46px;border-bottom:1px solid var(--line);background:var(--band)'},
         list.length?h('table',{class:'simple',style:'width:auto;min-width:900px'},h('thead',null,h('tr',null,['Variation ID · '+list.length,'Status','Vertical','Variation','Accounts',kind==='stories'?null:'Trial Reels','Assigned to'].filter(Boolean).map(x=>h('th',null,x)))),
           h('tbody',null,list.map(v=>h('tr',null,h('td',null,h('button',{type:'button',class:'plain',style:'text-align:left;font-weight:600',onclick:()=>vcfg&&recordModal(vcfg,v,false)},v.name||v.id)),h('td',null,v.vstatus==='Approved'&&SCH.has(v.id)?chip('Scheduled','posting_status'):(chip(v.vstatus,'var_status')||v.vstatus||'—')),h('td',null,v.vertical?chip(v.vertical,'vertical'):'—'),
