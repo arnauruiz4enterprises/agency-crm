@@ -2249,7 +2249,7 @@ function boardView(tab,root){const list=rows('tasks').filter(tab.f);root.append(
 
 /* ---------- model app (Content Hub) ---------- */
 const ma={screen:'home',plat:null,tab:'past',f:{},id:null,extra:null,reset:false,open:new Set(),up:{},scrolls:{}};
-const PENDING=['Instructions Added','Not Approved'];const toFix=r=>!!r&&(r.status==='Not Approved'||(PENDING.includes(r.status)&&!!String(r.reject_reason||'').replace(/<[^>]*>/g,'').trim()));
+const PENDING=['Instructions Added','Not Approved'];/* trial reels hechos desde Variations: reutilizan un vídeo ya grabado, la modelo no tiene nada que hacer (aunque la edición se rechace) */const agencyOnly=r=>!!(r&&r.source_variation);const toFix=r=>!!r&&(r.status==='Not Approved'||(PENDING.includes(r.status)&&!!String(r.reject_reason||'').replace(/<[^>]*>/g,'').trim()));
 const PLATS=[{id:'ig',label:'Instagram',icon:'📸',color:'#8b46ff',test:r=>['Short Form','Stories'].includes(r.type)},{id:'yt',label:'YouTube',icon:'▶️',color:'#e5484d',test:r=>['Youtube','Youtube Long Form'].includes(r.type)},{id:'of',label:'OnlyFans',icon:'💎',color:'#2d7ff9',test:r=>OF_TYPES.includes(r.type)},{id:'tt',label:'TikTok',icon:'🎵',color:'#20b8b1',test:r=>r.type==='Tiktok'},{id:'tw',label:'Twitter',icon:'🐦',color:'#4aa8d8',test:r=>r.type==='Twitter'},{id:'p1',label:'Prioridad 1',icon:'⚡',color:'#ff6f2c',test:r=>arr(r.model_tags).some(t=>/prioridad\s*1/i.test(String(t)))}];
 const PROP_ICON={'IG Reels or Carrusell':'🎬','OF':'💎','IG Stories':'📱','Youtube Long Form':'📺','Drive':'📁'};
 const todayIso=()=>iso(new Date());
@@ -2309,7 +2309,7 @@ function modelApp(v){
   const root=h('div',{class:'ma'});v.append(root);const m=model();
   if(!S.loaded){root.append(h('div',{class:'ma-empty'},'Cargando…'));return}
   if(!m){root.append(h('div',{class:'ma-empty'},'No hay creadoras todavía.'),h('div',{class:'ma-wrap'},h('button',{type:'button',class:'ma-btn',onclick:()=>go('creators')},'Volver al CRM')));return}
-  const T=todayIso();const pend=mine('content').filter(r=>PENDING.includes(r.status));
+  const T=todayIso();const pend=mine('content').filter(r=>PENDING.includes(r.status)&&!agencyOnly(r));
   const late=r=>!!r.due_date&&r.due_date<T,fut=r=>!!r.due_date&&r.due_date>T;
   const s=settings();const logo=(s.agency||'A').slice(0,1).toUpperCase();
   const tagsOf=r=>arr(r.model_tags);/* solo Model Tags: los Tags son internos de la agencia */
@@ -2352,7 +2352,7 @@ function modelApp(v){
           h('div',{class:'ma-upmsg '+(R.ok&&!R.fix?'ok':R.diff>0||R.redo||R.fix?'over':'miss')},R.msg),
           refBox(r,true),h('div',{class:'ma-more-acts one'},h('button',{type:'button',class:'ma-btn',onclick:()=>maNav({screen:'detail',id:r.id})},'Abrir y subir archivos'))):null))});
   }else if(ma.screen==='detail'){
-    const r=S.d.content.get(ma.id);if(!r){ma.screen='list';root.append(h('div',{class:'ma-empty'},'Esta tarea ya no existe.'));return}
+    const r0=S.d.content.get(ma.id);const r=r0&&(S.role!=='model'||!agencyOnly(r0))?r0:null;if(!r){ma.screen='list';root.append(h('div',{class:'ma-empty'},'Esta tarea ya no existe.'));return}
     const p=PLATS.find(x=>x.id!=='p1'&&x.test(r))||{label:r.type||'Contenido',icon:'🎬',color:'#8b46ff'};const d=r.due_date;
     root.append(top(back(()=>maNav({screen:'list'})),PENDING.includes(r.status)?h('button',{type:'button',class:'done',onclick:()=>tryDone(r)},'Hecho'):h('span',{class:'chip g'},r.status||''),h('button',{type:'button',onclick:()=>maNav({screen:'home'})},'⌂ Inicio')));
     root.append(h('div',{class:'ma-hero'},h('div',{class:'ma-wrap'},h('div',{class:'ma-id'},h('span',{class:'ma-ico',style:'--c:#ffffffcc'},p.icon),h('div',{style:'min-width:0'},h('div',{class:'ma-eyebrow'},p.label),h('div',{class:'ma-name',style:'font-size:18px'},r.content_id))))),w);
