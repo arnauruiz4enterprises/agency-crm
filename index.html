@@ -1087,7 +1087,9 @@ function cellView(col,row){const v=col.calc?col.calc(row):row[col.k];
   if(col.t==='pct')return h('span',{style:'color:'+(+v<0?'var(--danger)':'var(--ok)')},(+v>0?'+':'')+fmt(v)+'%');
   if(col.t==='long'){const L=String(v).split('\n').map(x=>x.trim()).filter(Boolean);const f=(L[0]||'').replace(/^(?:[•*-]|\d+[.)])\s+/,'');return richNode(f.length>300?f.slice(0,300)+'…':f,'rt-cell')}
   return String(v).length>180?String(v).slice(0,180)+'…':String(v)}
-function pickPop(anchor,col,cfg,current,multi,onChange){const cur=new Set(current);let opts=col.acc?mine('accounts').sort((x,y)=>String(x.platform||'').localeCompare(String(y.platform||''))).map(accLabel):optionsFor(col,cfg);current.forEach(v=>{if(v&&!opts.includes(v))opts.push(v)});
+/* al elegir cuentas solo salen las que pueden recibir contenido (las ya puestas se mantienen para poder quitarlas) */
+const ACC_PICK=['Running & Posting','Cooling Down','Suspended for Appeal'];const accPickable=a=>ACC_PICK.includes(a.status);
+function pickPop(anchor,col,cfg,current,multi,onChange){const cur=new Set(current);let opts=col.acc?mine('accounts').filter(accPickable).sort((x,y)=>String(x.platform||'').localeCompare(String(y.platform||''))).map(accLabel):optionsFor(col,cfg);current.forEach(v=>{if(v&&!opts.includes(v))opts.push(v)});
   const view=o=>cchip(col,o);const box=h('div');const q=h('input',{class:'search',placeholder:'Buscar…','aria-label':'Buscar opción'});
   let infoEl=null;const info=()=>{if(infoEl)infoEl.textContent='Repeticiones para la modelo: '+repsOf([...cur])+' (la plataforma con más cuentas marcadas)'};
   if(col.acc){const m=model();infoEl=h('div',{class:'hint',style:'padding:2px 8px 6px'});info()}
@@ -1740,7 +1742,7 @@ function newTaskDlg(a,kind0,due0){const state={v:null};let kind=kind0||'NR',acc=
   const due=h('input',{id:'nt_due',type:'date',value:due0,required:true});
   const draw=()=>{seg.replaceChildren(...Object.entries(KIND).filter(([k])=>k!=='TR'||acc.platform==='Instagram').map(([k,v])=>h('button',{type:'button',class:kind===k?'on':'','aria-pressed':String(kind===k),onclick:()=>{kind=k;state.v=null;draw()}},v[0]+' ',h('span',{class:'k'},k))));
     hint.replaceChildren('Se guarda como tarea ',h('b',null,KIND[kind][1]),' en Posting. Las variaciones que se ofrecen son las Approved de este tipo para esta cuenta.');
-    accBox.replaceChildren(accChip(accLabel(acc)),' ',h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,mine('accounts').map(x=>h('div',{class:'opt',onclick:()=>{acc=x;if(kind==='TR'&&x.platform!=='Instagram')kind='NR';state.v=null;closePop();draw()}},accChip(accLabel(x)))))},'change'));
+    accBox.replaceChildren(accChip(accLabel(acc)),' ',h('button',{type:'button',class:'plain',onclick:e=>pop(e.currentTarget,mine('accounts').filter(x=>accPickable(x)||(acc&&x.id===acc.id)).map(x=>h('div',{class:'opt',onclick:()=>{acc=x;if(kind==='TR'&&x.platform!=='Instagram')kind='NR';state.v=null;closePop();draw()}},accChip(accLabel(x)))))},'change'));
     picker=varPicker(acc,()=>kind,state);pickBox.replaceChildren(picker.el)};draw();
   openModal(h('div',{class:'dlg',style:'width:min(760px,100%)'},h('h2',null,'Nueva tarea de posting',h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),
     h('div',{class:'f'},h('label',null,'Content type *'),h('div',null,seg,hint)),h('div',{class:'f'},h('label',null,'Account *'),accBox),h('div',{class:'f'},h('label',null,'Variation (opcional)'),pickBox),h('div',{class:'f'},h('label',{for:'nt_due'},'Due date *'),due),
