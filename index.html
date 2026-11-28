@@ -778,9 +778,10 @@ const POST_TYPES=['Post','Post Reel','Post Story','Story'];const isDone=t=>!!t&&
 const kindOf=t=>(t.action_type==='Post Story'||t.action_type==='Story')?'SR':t.trial_reels?'TR':'NR';
 const KIND={NR:['Normal Reel','Post Reel',false],TR:['Trial Reel','Post Reel',true],SR:['Stories','Post Story',false]};
 const today=()=>iso(new Date());
-function ensureVars(r,idx){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status)||r.k_src==='kalista-csv'||(r.kalista_id&&r.status!=='Approved'))return 0;let n=0;
+/* only: cuentas recién añadidas a mano en una tarea ya aprobada → se crean sus variaciones aunque la tarea venga de Kalista */
+function ensureVars(r,idx,only){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status))return 0;if(!only&&(r.k_src==='kalista-csv'||(r.kalista_id&&r.status!=='Approved')))return 0;let n=0;
   const have=idx?(idx.get(r.content_id)||new Set()):new Set(rows('variations').filter(v=>v.content_id&&v.content_id===r.content_id).map(v=>v.account_id));
-  arr(r.accounts).forEach((l,i)=>{const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id)||have.has(a.id))return;n++;
+  arr(r.accounts).forEach((l,i)=>{if(only&&!only.has(l))return;const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id)||have.has(a.id))return;n++;
     put('variations',id,{name:'Variation-'+(i+1)+'-'+(r.content_id||'')+(r.vertical?'-'+r.vertical:''),model:r.model,content_ref:r.id,content_id:r.content_id,accounts:[accLabel(a)],account_id:a.id,platform:a.platform,type:r.type,vertical:r.vertical||null,trial_reels:!!r.trial_reels,instructions:r.instructions||null,tags:arr(r.tags),edited_drive:r.edited_drive||null,file:null,vstatus:'Approved',seen:'Not Seen',trial_made:'No Trial',removed:'Not Removed'},true)});return n}
 const LIVE_ST=['Approved','Semi-Posted','Posted'];
 /* content moved back before Approved: remove the variations the CRM created for it that were never used */
@@ -807,7 +808,7 @@ function afterPut(c,row,prev){if(inHook||S.role==='model'||!S.loaded)return;inHo
   if(c==='variations'&&(!prev||prev.vstatus!==row.vstatus))contentAutoStatus(row.content_ref,row.content_id);
     /* si en Pipeline se marca/desmarca Trial Reels en una variación ya asignada, su tarea de posting abierta cambia de tipo con ella (Reel ⇄ Trial) */
     if(c==='variations'&&prev&&!!prev.trial_reels!==!!row.trial_reels)rows('actions').forEach(t=>{if(t.variation_ref!==row.id||!POST_TYPES.includes(t.action_type)||['Done','Posted','Not Done','Cancelled'].includes(t.status)||!!t.trial_reels===!!row.trial_reels)return;const K=KIND[row.trial_reels?'TR':'NR'];put('actions',t.id,{...t,trial_reels:!!row.trial_reels,name:String(t.name||'').replace(/^(Normal Reel|Trial Reel)/,K[0])},true)});
-  if(c==='content'){ensureVars(row);if(retractVars(row))rerender();if(LIVE_ST.includes(row.status))persistVarFiles(row);if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
+  if(c==='content'){const added=prev&&LIVE_ST.includes(row.status)?new Set(arr(row.accounts).filter(l=>!arr(prev.accounts).includes(l))):null;if(added&&added.size)ensureVars(row,null,added);else ensureVars(row);if(retractVars(row))rerender();if(LIVE_ST.includes(row.status))persistVarFiles(row);if(stFiles(row).length&&!row.edited_thumb)thumbSoon()}
   if(c==='actions'){const a=row.account_id?S.d.accounts.get(row.account_id):accFind(arr(row.account)[0]);
     if(POST_TYPES.includes(row.action_type)&&row.variation_ref&&S.d.variations.has(row.variation_ref)){const v=S.d.variations.get(row.variation_ref);
       if(isDone(row)&&(v.vstatus!=='Posted'||(row.post_link&&v.ig_link!==row.post_link)))put('variations',v.id,{...v,vstatus:'Posted',posted:v.posted||row.due||today(),ig_link:row.post_link||v.ig_link||null},true);
