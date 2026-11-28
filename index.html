@@ -782,7 +782,7 @@ const today=()=>iso(new Date());
 function ensureVars(r,idx,only){if(!r||!['Approved','Semi-Posted','Posted'].includes(r.status))return 0;if(!only&&(r.k_src==='kalista-csv'||(r.kalista_id&&r.status!=='Approved')))return 0;let n=0;
   const have=idx?(idx.get(r.content_id)||new Set()):new Set(rows('variations').filter(v=>v.content_id&&v.content_id===r.content_id).map(v=>v.account_id));
   arr(r.accounts).forEach((l,i)=>{if(only&&!only.has(l))return;const a=accFind(l);if(!a)return;const id='v-'+r.id+'-'+a.id;if(S.d.variations.has(id)||have.has(a.id))return;n++;
-    put('variations',id,{name:'Variation-'+(i+1)+'-'+(r.content_id||'')+(r.vertical?'-'+r.vertical:''),model:r.model,content_ref:r.id,content_id:r.content_id,accounts:[accLabel(a)],account_id:a.id,platform:a.platform,type:r.type,vertical:r.vertical||null,trial_reels:!!r.trial_reels,instructions:r.instructions||null,tags:arr(r.tags),edited_drive:r.edited_drive||null,file:null,vstatus:'Approved',seen:'Not Seen',trial_made:'No Trial',removed:'Not Removed'},true)});return n}
+    put('variations',id,{name:'Variation-'+(i+1)+'-'+(r.content_id||'')+(r.vertical?'-'+r.vertical:''),model:r.model,content_ref:r.id,content_id:r.content_id,accounts:[accLabel(a)],account_id:a.id,platform:a.platform,type:r.type,vertical:r.vertical||null,trial_reels:!!r.trial_reels&&a.platform==='Instagram',instructions:r.instructions||null,tags:arr(r.tags),edited_drive:r.edited_drive||null,file:null,vstatus:'Approved',seen:'Not Seen',trial_made:'No Trial',removed:'Not Removed'},true)});return n}
 const LIVE_ST=['Approved','Semi-Posted','Posted'];
 /* content moved back before Approved: remove the variations the CRM created for it that were never used */
 function retractVars(r){if(!r||LIVE_ST.includes(r.status)||!r.id)return 0;const pre='v-'+r.id+'-';let n=0;
@@ -1723,7 +1723,9 @@ function playLink(v){const f=varFile(v);if(!f)return toast('Esta variación aún
   openModal(h('div',{class:'dlg',style:'width:min(520px,100%)'},h('h2',null,v.name,h('button',{type:'button',onclick:closeModal,'aria-label':'Cerrar'},'✕')),body,h('div',{style:'margin-top:8px'},h('a',{href:f,target:'_blank',rel:'noopener'},(/dropbox/i.test(f)?'Abrir en Dropbox':id?'Abrir en Drive':'Abrir link')+' ↗'))))}
 const taskAcc=(t,a)=>t.account_id?t.account_id===a.id:arr(t.account).some(l=>{const f=accFind(l);return f&&f.id===a.id});
 const postTasks=()=>rows('actions').filter(t=>POST_TYPES.includes(t.action_type));
-function assignable(a,kind,exceptTask){const taken=new Set(postTasks().filter(t=>t.variation_ref&&(!exceptTask||t.id!==exceptTask)).map(t=>t.variation_ref));
+/* una tarea de posting que no se pudo hacer (Unable to Complete, Not Done, Cancelled) libera su variación para otra tarea */
+const POST_FAILED=['Unable to Complete','Not Done','Cancelled'];
+function assignable(a,kind,exceptTask){const taken=new Set(postTasks().filter(t=>t.variation_ref&&!POST_FAILED.includes(t.status)&&(!exceptTask||t.id!==exceptTask)).map(t=>t.variation_ref));
   return rows('variations').filter(v=>(v.account_id?v.account_id===a.id:arr(v.accounts).some(l=>{const f=accFind(l);return f&&f.id===a.id}))&&v.vstatus==='Approved'&&!taken.has(v.id)&&!varDupWarn(v)&&(()=>{const c=v.content_ref&&S.d.content.get(v.content_ref);return !(c&&!LIVE_ST.includes(c.status))&&(kind==='SR'?v.type==='Stories':v.type!=='Stories'&&(kind==='TR'?!!v.trial_reels:(!v.trial_reels&&(v.trial_set||!(c&&c.trial_reels)))))})())}
 function varPicker(a,kind,state,exceptTask){const q=h('input',{class:'search',placeholder:'Search variations…','aria-label':'Buscar variación'});const box=h('div',{class:'vpick'});
   const draw=()=>{const list=assignable(a,kind(),exceptTask);const s=q.value.trim().toLowerCase();const vis=list.filter(v=>!s||[v.name,v.vertical].join(' ').toLowerCase().includes(s));
